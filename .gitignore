@@ -1,3 +1,18 @@
+# Build artifacts
+build/
+*.o
+*.out
+
+
+# Local environment files
+.DS_Store
+*.swp
+
+
+# DEVELOPMENT
+
+.gemini_chats/
 .prompts/
 
-.gemini_chats
+# DELETE THIS LATER
+results/
