@@ -1,5 +1,4 @@
 # Build artifacts
-build/
 *.o
 *.out
 
@@ -15,4 +14,5 @@ build/
 .prompts/
 
 # DELETE THIS LATER
-results/
+# results/
+# build/
