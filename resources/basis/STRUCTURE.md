@@ -57,3 +57,17 @@ This document outlines the directory and file structure for the C++/MPI implemen
 ### Documentation (`docs/`)
 
 -   **`PERFORMANCE.md`**: A document to formally present and analyze the performance results, including the graphs and tables outlined in the project proposal.
+
+---
+
+## References
+
+- "A Survey of Blockchain Consensus Protocols." (20XX, Author(s) Unknown).
+- "An efficient sharding consensus algorithm for consortium chains." (20XX, Author(s) Unknown).
+- "Analyzing fault aware collective performance in a process fault tolerant MPI." (20XX, Author(s) Unknown).
+- Castro, M., & Liskov, B. (1999). *"Practical Byzantine Fault Tolerance"*. Proceedings of the Third Symposium on Operating Systems Design and Implementation.
+- Kumar, M. (2025). *"Parallelism and Blockchain"* (Blockchain.pdf). CSCI 654 Lecture Slides.
+- Luu, L., et al. (2016). *"A Secure Sharding Protocol for Open Blockchains (Elastico)"*. Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security.
+- "On Sharding Permissioned Blockchains." (20XX, Author(s) Unknown).
+- "Reaching Consensus in the Byzantine Empire - A Comprehensive Survey." (20XX, Author(s) Unknown).
+- "Survey of Sharding in Blockchains." (20XX, Author(s) Unknown).

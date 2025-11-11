@@ -1,6 +1,6 @@
-# Performance Analysis and Results
+# Blockchain Fundamentals
 
-This document will contain the detailed analysis of the performance measurements, including graphs, tables, and interpretations of the throughput, latency, and speedup achieved by the sharded blockchain implementation.
+This document serves as a personal note-taking space for fundamental concepts related to blockchain technology, consensus mechanisms, and sharding, as studied for the project.
 
 ---
 
