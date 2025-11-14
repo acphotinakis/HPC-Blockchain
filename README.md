@@ -1,5 +1,56 @@
 # Parallelizing Blockchain Computations via Sharding (using PBFT and MPI)
 
+## Project Structure
+
+.
+├── Makefile
+├── build/
+├── docs/
+│   ├── PROPOSAL.md
+│   ├── IMPLEMENTATION_PLAN.md
+│   ├── STRUCTURE.md
+│   ├── PERFORMANCE.md
+│   └── blockchain_fundamentals.md
+├── include/
+│   ├── sbmpi/
+│   │   ├── core/
+│   │   │   ├── block.h
+│   │   │   ├── blockchain.h
+│   │   │   ├── transaction.h
+│   │   │   └── node.h
+│   │   ├── consensus/
+│   │   │   └── pbft.h
+│   │   ├── network/
+│   │   │   ├── shard.h
+│   │   │   └── final_committee.h
+│   │   └── util/
+│   │       ├── config.h
+│   │       ├── logging.h
+│   │       └── timer.h
+├── resources/
+│   └── Blockchain.pdf
+├── scripts/
+│   ├── run_experiment.sh
+│   └── plot_results.py
+├── src/
+│   ├── core/
+│   │   ├── block.cpp
+│   │   ├── blockchain.cpp
+│   │   ├── transaction.cpp
+│   │   └── node.cpp
+│   ├── consensus/
+│   │   └── pbft.cpp
+│   ├── network/
+│   │   ├── shard.cpp
+│   │   └── final_committee.cpp
+│   ├── util/
+│   │   ├── logging.cpp
+│   │   └── timer.cpp
+│   └── main.cpp
+└── tests/
+    ├── test_pbft.cpp
+    └── test_sharding.cpp
+
 ## Overview
 
 This project addresses the critical scalability bottleneck in traditional blockchain architectures by implementing a parallel blockchain algorithm using sharding. Our goal is to demonstrate significant performance improvements in transaction throughput and latency by leveraging parallel computing principles.
