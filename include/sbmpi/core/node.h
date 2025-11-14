@@ -23,88 +23,108 @@
 
 #include "mpi.h"
 
-namespace sbmpi {
-namespace core {
-
-/**
- * @enum NodeRole
- * @brief Defines the role of a node in the sharded network.
- */
-enum class NodeRole {
-    /**
-     * @brief A member of a processing shard (committee).
-     */
-    SHARD_MEMBER,
+namespace sbmpi
+{
+  namespace core
+  {
 
     /**
-     * @brief The leader (rank 0) of a processing shard.
+     * @enum NodeRole
+     * @brief Defines the role of a node in the sharded network.
      */
-    SHARD_LEADER,
+    enum class NodeRole {
+      /**
+       * @brief A member of a processing shard (committee).
+       */
+      SHARD_MEMBER,
+
+      /**
+       * @brief The leader (rank 0) of a processing shard.
+       */
+      SHARD_LEADER,
+
+      /**
+       * @brief A member of the final aggregation committee.
+       */
+      FINAL_COMMITTEE_MEMBER,
+
+      /**
+       * @brief The leader (rank 0) of the final committee.
+       */
+      FINAL_COMMITTEE_LEADER,
+
+      /**
+       * @brief A node that is not assigned (e.g., global root).
+       */
+      UNASSIGNED
+    };
 
     /**
-     * @brief A member of the final aggregation committee.
+     * @class Node
+     * @brief Represents the state and identity of a single MPI process.
      */
-    FINAL_COMMITTEE_MEMBER,
+    class Node
+    {
+     public:
+      /**
+       * @brief Constructor.
+       * @param global_rank The node's rank in `MPI_COMM_WORLD`.
+       * @param shard_comm The node's local communicator (for its shard or
+       * the final committee).
+       * @param role The role assigned to this node.
+       */
+      Node(int global_rank, MPI_Comm shard_comm, NodeRole role);
 
-    /**
-     * @brief The leader (rank 0) of the final committee.
-     */
-    FINAL_COMMITTEE_LEADER,
+      /**
+       * @brief Destructor.
+       * Frees the MPI communicator if it's not MPI_COMM_NULL or
+       * MPI_COMM_WORLD.
+       */
+      ~Node();
 
-    /**
-     * @brief A node that is not assigned (e.g., global root).
-     */
-    UNASSIGNED
-};
+      // Deleted copy/move constructors to manage MPI_Comm lifetime
+      Node(const Node&)            = delete;
+      Node& operator=(const Node&) = delete;
+      Node(Node&&)                 = delete;
+      Node& operator=(Node&&)      = delete;
 
-/**
- * @class Node
- * @brief Represents the state and identity of a single MPI process.
- */
-class Node {
-public:
-    /**
-     * @brief Constructor.
-     * @param global_rank The node's rank in `MPI_COMM_WORLD`.
-     * @param shard_comm The node's local communicator (for its shard or
-     * the final committee).
-     * @param role The role assigned to this node.
-     */
-    Node(int global_rank, MPI_Comm shard_comm, NodeRole role);
+      int getGlobalRank() const
+      {
+        return m_global_rank_;
+      }
+      int getShardRank() const
+      {
+        return m_shard_rank_;
+      }
+      int getShardSize() const
+      {
+        return m_shard_size_;
+      }
+      NodeRole getRole() const
+      {
+        return m_role_;
+      }
+      MPI_Comm getCommunicator() const
+      {
+        return m_shard_comm_;
+      }
 
-    /**
-     * @brief Destructor.
-     * Frees the MPI communicator if it's not MPI_COMM_NULL or
-     * MPI_COMM_WORLD.
-     */
-    ~Node();
-
-    No
-
-    // Deleted copy/move constructors to manage MPI_Comm lifetime
-    Node(const Node&) = delete;
-    Node& operator=(const Node&) = delete;
-    Node(Node&&) = delete;
-    Node& operator=(Node&&) = delete;
-
-    int getGlobalRank() const { return m_global_rank_; }
-    int getShardRank() const { return m_shard_rank_; }
-    int getShardSize() const { return m_shard_size_; }
-    NodeRole getRole() const { return m_role_; }
-    MPI_Comm getCommunicator() const { return m_shard_comm_; }
-
-    bool isShardLeader() const { return m_role_ == NodeRole::SHARD_LEADER; }
-    bool isFinalCommitteeLeader() const {
+      bool isShardLeader() const
+      {
+        return m_role_ == NodeRole::SHARD_LEADER;
+      }
+      bool isFinalCommitteeLeader() const
+      {
         return m_role_ == NodeRole::FINAL_COMMITTEE_LEADER;
-    }
+      }
 
-private:
-    int m_global_rank_ = -1;  // Rank in MPI_COMM_WORLD
-    int m_shard_rank_ = -1;   // Rank in m_shard_comm_
-    int m_shard_size_ = -1;
-    NodeRole m_role_ = NodeRole::UNASSIGNED;
-    MPI_Comm m_shard_comm_ = MPI_COMM_NULL; // The local communicator
-};
+     private:
+      int      m_global_rank_ = -1;  // Rank in MPI_COMM_WORLD
+      int      m_shard_rank_  = -1;  // Rank in m_shard_comm_
+      int      m_shard_size_  = -1;
+      NodeRole m_role_        = NodeRole::UNASSIGNED;
+      MPI_Comm m_shard_comm_  = MPI_COMM_NULL;  // The local communicator
+    };
 
-} // namespace core
-} // namespace sbmpi
+  }  // namespace core
+}  // namespace sbmpi

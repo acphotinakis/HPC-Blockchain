@@ -1,0 +1,25 @@
+BasedOnStyle: Google
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+
+ContinuationIndentWidth: 4
+
+NamespaceIndentation: All
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+
+SortIncludes: true
+IncludeBlocks: Preserve
+
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
+
+SpacesInContainerLiterals: true
+SpaceBeforeParens: ControlStatements
+
+Cpp11BracedListStyle: true
+BreakBeforeBraces: Linux
