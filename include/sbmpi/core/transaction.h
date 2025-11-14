@@ -28,48 +28,51 @@
 #include <string>
 #include <vector>
 
-namespace sbmpi {
-namespace core {
+namespace sbmpi
+{
+  namespace core
+  {
 
-/**
- * @struct Transaction
- * @brief Represents a single transaction in the system.
- */
-struct Transaction {
-  uint64_t id;
-  uint64_t timestamp;
-  uint32_t sender_id;
-  uint32_t receiver_id;
-  double value;
+    /**
+     * @struct Transaction
+     * @brief Represents a single transaction in the system.
+     */
+    struct Transaction {
+      uint64_t id;
+      uint64_t timestamp;
+      uint32_t sender_id;
+      uint32_t receiver_id;
+      double   value;
 
-  /**
-   * @brief Serializes the Transaction into a byte buffer for MPI.
-   * @return A vector of chars representing the serialized object.
-   */
-  std::vector<char> serialize() const;
+      /**
+       * @brief Serializes the Transaction into a byte buffer for MPI.
+       * @return A vector of chars representing the serialized object.
+       */
+      std::vector<char> serialize() const;
 
-  /**
-   * @brief Deserializes a byte buffer into this Transaction object.
-   * @param buffer The byte buffer received from MPI.
-   */
-  void deserialize(const std::vector<char> &buffer);
+      /**
+       * @brief Deserializes a byte buffer into this Transaction object.
+       * @param buffer The byte buffer received from MPI.
+       */
+      void deserialize(const std::vector<char>& buffer);
 
-  /**
-   * @brief Creates a custom MPI Datatype for this struct.
-   *
-   * An alternative to serialization is to create a custom MPI_Datatype.
-   * This function would define that type, but serialization is
-   * often more flexible.
-   */
-  // static void createMpiType(MPI_Datatype* mpi_transaction_type);
-};
+      /**
+       * @brief Creates a custom MPI Datatype for this struct.
+       *
+       * An alternative to serialization is to create a custom MPI_Datatype.
+       * This function would define that type, but serialization is
+       * often more flexible.
+       */
+      // static void createMpiType(MPI_Datatype* mpi_transaction_type);
+      std::string getHash() const;
+    };
 
-/**
- * @brief Factory function to create a vector of mock transactions.
- * @param count The number of transactions to create.
- * @return A vector of mock Transaction objects.
- */
-std::vector<Transaction> createMockTransactions(size_t count);
+    /**
+     * @brief Factory function to create a vector of mock transactions.
+     * @param count The number of transactions to create.
+     * @return A vector of mock Transaction objects.
+     */
+    std::vector<Transaction> createMockTransactions(size_t count);
 
-} // namespace core
-} // namespace sbmpi
+  }  // namespace core
+}  // namespace sbmpi
