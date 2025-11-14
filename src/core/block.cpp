@@ -1,4 +1,3 @@
-// C++ Source File (Implementation logic)
 #include "../../include/sbmpi/core/block.h"
 #include <openssl/sha.h>
 #include <cstring>
