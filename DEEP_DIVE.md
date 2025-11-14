@@ -54,6 +54,8 @@ PBFT is the chosen **consensus algorithm**, designed to work in systems where so
     2.  **`PREPARE`**: Replicas validate the proposal and broadcast a `prepare` vote. A node waits until it has received `2f` matching `prepare` messages from others. This state is called **prepared**.
     3.  **`COMMIT`**: Once "prepared," a node broadcasts a `commit` vote. It waits until it has collected `2f + 1` matching `commit` messages. At this point, the block is **committed** and considered final.
 
+    Crucially, all `prepare` and `commit` messages include the cryptographic digest (hash) of the proposed block. A replica will only accept messages that match the digest from the initial `pre-prepare` message, ensuring all honest nodes are voting on the exact same proposal.
+
 ---
 
 ## 3. System Architecture & Component Deep Dive
@@ -136,9 +138,15 @@ This component creates the canonical blockchain from the parallel work of the sh
 -   **Shard Size**: The number of nodes per shard is determined by `(world_size - final_committee_size) / num_shards`.
 -   **Fault Threshold `f`**: The `faulty_nodes_per_shard` parameter (`f`) is set in the configuration. For PBFT to be safe, each shard must have at least `N = 3f + 1` nodes. This means the smallest possible shard size for tolerating one faulty node (`f=1`) is **4**. If a shard has fewer than `3f+1` nodes, it cannot guarantee safety or liveness in the presence of `f` faults.
 
-### C. System-Level Correctness and Finality
--   **Intra-Shard Consistency**: PBFT guarantees that all honest nodes within a shard agree on the same sequence of transactions and commit them in the same order. This provides **local finality**.
--   **Global Consistency**: The Final Committee is responsible for establishing a **canonical global ordering** of the blocks produced by the shards. By ordering the shard blocks deterministically (e.g., based on `shard_id` for each round), it ensures that all nodes in the system will ultimately see the same final, global blockchain. This transforms local finality into global finality.
+### C. Formal Correctness Argument: From Local to Global Consistency
+
+The guarantee of global consistency for the entire sharded blockchain rests on two core premises: the correctness of PBFT within each shard and the deterministic nature of the final aggregation.
+
+1.  **Premise 1: Intra-Shard Liveness and Safety.** The PBFT protocol guarantees that for any given shard operating with `N >= 3f + 1` nodes, all honest replicas will agree on a single, totally ordered sequence of transaction blocks. They will never commit conflicting blocks at the same height (Safety), and they will eventually commit the next block in the sequence (Liveness). This establishes a consistent and final history *local to each shard*.
+
+2.  **Premise 2: Deterministic Aggregation.** The Final Committee is defined to operate deterministically. For any given global block height, it waits to receive one valid block from each shard leader. It then assembles these blocks into a final chain using a fixed, publicly known ordering rule (e.g., sorting by `shard_id`). There is no ambiguity in this step.
+
+**Conclusion: Global Consistency.** Because every shard produces a single, provably consistent local history (Premise 1), and the Final Committee combines these consistent histories in a globally deterministic and unambiguous way (Premise 2), it follows that all honest nodes in the entire system will reconstruct the exact same global blockchain state. This two-level process effectively transforms the local finality of each shard into the global finality of the entire system.
 
 ### D. Network Model Assumptions
 -   **Synchrony**: The model assumes a **weakly synchronous** network, where messages are guaranteed to be delivered within some bounded (but unknown) time. This is a standard assumption for PBFT.
