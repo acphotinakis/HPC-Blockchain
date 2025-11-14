@@ -26,70 +26,72 @@
 
 #pragma once
 
-#include "../core/node.h"
-#include "../core/block.h"
-#include "../core/transaction.h"
-#include "../consensus/pbft.h"
 #include <memory>
 #include <vector>
+#include "../consensus/pbft.h"
+#include "../core/block.h"
+#include "../core/node.h"
+#include "../core/transaction.h"
 #include "mpi.h"
 
-namespace sbmpi {
-namespace network {
-
-/**
- * @class Shard
- * @brief Manages a single shard, its transaction pool, and its
- * consensus instance.
- */
-class Shard {
-public:
-    /**
-     * @brief Constructor.
-     * @param node The Node object containing this process's state
-     * (communicator, rank, role).
-     * @param config The global experiment configuration.
-     * @param final_committee_leader_rank The global rank of the final
-     * committee's leader, to know
-     * who to send the block to.
-     */
-    Shard(const core::Node& node,
-          const util::ExperimentConfig& config,
-          int final_committee_leader_rank);
+namespace sbmpi
+{
+  namespace network
+  {
 
     /**
-     * @brief Runs the main loop for a shard node.
-     *
-     * Waits to receive transactions, runs consensus, and (if leader)
-     * sends the resulting block.
+     * @class Shard
+     * @brief Manages a single shard, its transaction pool, and its
+     * consensus instance.
      */
-    void runMainLoop();
+    class Shard
+    {
+     public:
+      /**
+       * @brief Constructor.
+       * @param node The Node object containing this process's state
+       * (communicator, rank, role).
+       * @param config The global experiment configuration.
+       * @param final_committee_leader_rank The global rank of the final
+       * committee's leader, to know
+       * who to send the block to.
+       */
+      Shard(const core::Node& node, const util::ExperimentConfig& config,
+            int final_committee_leader_rank);
 
-private:
-    /**
-     * @brief Receives transactions from the global root node.
-     */
-    void receiveTransactions();
+      /**
+       * @brief Runs the main loop for a shard node.
+       *
+       * Waits to receive transactions, runs consensus, and (if leader)
+       * sends the resulting block.
+       */
+      void runMainLoop();
 
-    /**
-     * @brief Runs one cycle of PBFT consensus.
-     */
-    void runConsensusCycle();
+     private:
+      /**
+       * @brief Receives transactions from the global root node.
+       */
+      void receiveTransactions();
 
-    /**
-     * @brief (Leader-only) Sends the validated block to the final
-     * committee.
-     * @param block The validated block to send.
-     */
-    void sendBlockToFinalCommittee(const core::Block& block);
+      /**
+       * @brief Runs one cycle of PBFT consensus.
+       */
+      void runConsensusCycle();
 
-    const core::Node& m_node_;
-    const util::ExperimentConfig& m_config_;
-    std::unique_ptr<consensus::PBFT> m_pbft_instance_;
-    std::vector<core::Transaction> m_transaction_pool_;
+      /**
+       * @brief (Leader-only) Sends the validated block to the final
+       * committee.
+       * @param block The validated block to send.
+       */
+      void sendBlockToFinalCommittee(const core::Block& block);
 
-    int m_final_committee_leader_rank_;
-};
+      const core::Node&                m_node_;
+      const util::ExperimentConfig&    m_config_;
+      std::unique_ptr<consensus::PBFT> m_pbft_instance_;
+      std::vector<core::Transaction>   m_transaction_pool_;
 
-} // namespace network
-} // namespace sbmpi
+      int m_final_committee_leader_rank_;
+    };
+
+  }  // namespace network
+}  // namespace sbmpi

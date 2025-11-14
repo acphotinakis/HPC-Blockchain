@@ -20,41 +20,44 @@
 
 #include <chrono>
 
-namespace sbmpi {
-namespace util {
-
-/**
- * @class Timer
- * @brief A simple high-resolution timer for benchmarking.
- */
-class Timer {
-public:
-    /**
-     * @brief Starts the timer.
-     */
-    void start();
+namespace sbmpi
+{
+  namespace util
+  {
 
     /**
-     * @brief Stops the timer.
+     * @class Timer
+     * @brief A simple high-resolution timer for benchmarking.
      */
-    void stop();
+    class Timer
+    {
+     public:
+      /**
+       * @brief Starts the timer.
+       */
+      void start();
 
-    /**
-     * @brief Gets the elapsed duration in seconds.
-     * @return The duration in seconds as a double.
-     */
-    double getDurationSeconds() const;
+      /**
+       * @brief Stops the timer.
+       */
+      void stop();
 
-    /**
-     * @brief Gets the elapsed duration in milliseconds.
-     * @return The duration in milliseconds as a double.
-     */
-    double getDurationMilliseconds() const;
+      /**
+       * @brief Gets the elapsed duration in seconds.
+       * @return The duration in seconds as a double.
+       */
+      double getDurationSeconds() const;
 
-private:
-    std::chrono::high_resolution_clock::time_point m_start_time_;
-    std::chrono::high_resolution_clock::time_point m_end_time_;
-};
+      /**
+       * @brief Gets the elapsed duration in milliseconds.
+       * @return The duration in milliseconds as a double.
+       */
+      double getDurationMilliseconds() const;
 
-} // namespace util
-} // namespace sbmpi
+     private:
+      std::chrono::high_resolution_clock::time_point m_start_time_;
+      std::chrono::high_resolution_clock::time_point m_end_time_;
+    };
+
+  }  // namespace util
+}  // namespace sbmpi

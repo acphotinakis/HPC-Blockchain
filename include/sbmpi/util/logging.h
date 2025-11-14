@@ -21,65 +21,70 @@
 
 #pragma once
 
-#include <string>
 #include <sstream>
+#include <string>
 
-namespace sbmpi {
-namespace util {
-
-/**
- * @enum LogLevel
- * @brief Defines the verbosity level for the logger.
- */
-enum class LogLevel {
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR
-};
-
-/**
- * @class Logger
- * @brief A simple MPI-aware logging class.
- */
-class Logger {
-public:
-    /**
-     * @brief Constructor.
-     * @param rank The global MPI rank of the process using this logger.
-     */
-    Logger(int rank, LogLevel level = LogLevel::INFO)
-        : mpi_rank_(rank), m_level_(level) {}
+namespace sbmpi
+{
+  namespace util
+  {
 
     /**
-     * @brief Logs a message at the INFO level.
-     * @param message The message to log.
+     * @enum LogLevel
+     * @brief Defines the verbosity level for the logger.
      */
-    void info(const std::string& message) const;
+    enum class LogLevel {
+      DEBUG,
+      INFO,
+      WARN,
+      ERROR
+    };
 
     /**
-     * @brief Logs a message at the DEBUG level.
-     * @param message The message to log.
+     * @class Logger
+     * @brief A simple MPI-aware logging class.
      */
-    void debug(const std::string& message) const;
+    class Logger
+    {
+     public:
+      /**
+       * @brief Constructor.
+       * @param rank The global MPI rank of the process using this logger.
+       */
+      Logger(int rank, LogLevel level = LogLevel::INFO)
+          : mpi_rank_(rank), m_level_(level)
+      {
+      }
 
-    /**
-     * @brief Logs a message at the ERROR level.
-     * @param message The message to log.
-     */
-    void error(const std::string& message) const;
+      /**
+       * @brief Logs a message at the INFO level.
+       * @param message The message to log.
+       */
+      void info(const std::string& message) const;
 
-private:
-    /**
-     * @brief Internal logging function.
-     * @param level The log level.
-     * @param message The message.
-     */
-    void log(LogLevel level, const std::string& message) const;
+      /**
+       * @brief Logs a message at the DEBUG level.
+       * @param message The message to log.
+       */
+      void debug(const std::string& message) const;
 
-    int mpi_rank_;
-    LogLevel m_level_;
-};
+      /**
+       * @brief Logs a message at the ERROR level.
+       * @param message The message to log.
+       */
+      void error(const std::string& message) const;
 
-} // namespace util
-} // namespace sbmpi
+     private:
+      /**
+       * @brief Internal logging function.
+       * @param level The log level.
+       * @param message The message.
+       */
+      void log(LogLevel level, const std::string& message) const;
+
+      int      mpi_rank_;
+      LogLevel m_level_;
+    };
+
+  }  // namespace util
+}  // namespace sbmpi
