@@ -14,7 +14,6 @@ MAIN_DIRS=(
     "tests"
     "resources"
     "scripts"
-    "docs"
 )
 
 # --- Include Header Subdirectories ---
@@ -45,12 +44,12 @@ SCRIPT_FILES=(
     "scripts/run_experiment.sh"
     "scripts/plot_results.py"
 )
-DOC_FILES=(
-    "docs/PROPOSAL.md"
-    "docs/IMPLEMENTATION_PLAN.md"
-    "docs/STRUCTURE.md"
-    "docs/PERFORMANCE.md"
-)
+# DOC_FILES=(
+#     "docs/PROPOSAL.md"
+#     "docs/IMPLEMENTATION_PLAN.md"
+#     "docs/STRUCTURE.md"
+#     "docs/PERFORMANCE.md"
+# )
 
 # --- Header Files (Placeholders only) ---
 HEADER_FILES=(
@@ -87,7 +86,7 @@ SOURCE_FILES=(
 # Creates all directories recursively.
 create_dirs() {
     echo "Creating directories..."
-    mkdir -p "$PROJECT_ROOT"
+    # mkdir -p "$PROJECT_ROOT"
     
     # Create main directories
     for dir in "${MAIN_DIRS[@]}"; do
@@ -110,7 +109,7 @@ create_files() {
     echo "Creating placeholder files..."
     
     # Generic files
-    for file in "${ROOT_FILES[@]}" "${TEST_FILES[@]}" "${SCRIPT_FILES[@]}" "${DOC_FILES[@]}"; do
+    for file in "${ROOT_FILES[@]}" "${TEST_FILES[@]}" "${SCRIPT_FILES[@]}"; do
         touch "$PROJECT_ROOT/$file"
     done
     
