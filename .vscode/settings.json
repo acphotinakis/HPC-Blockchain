@@ -1,0 +1,26 @@
+{
+    // ---------------------------------------------------------
+    // C/C++ Compiler & IntelliSense
+    // ---------------------------------------------------------
+    "C_Cpp.default.compilerPath": "/usr/bin/g++",
+    // (Optional) preferred: "msvc-x64", "clang-x64", or "gcc-x64"
+    "C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+    // ---------------------------------------------------------
+    // Formatting (Clang-Format in your .venv)
+    // ---------------------------------------------------------
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "xaver.clang-format",
+    // Use clang-format from your Python virtual environment
+    "clang-format.executable": "${workspaceFolder}/.venv/bin/clang-format",
+    // Enable formatting on paste & type (optional but helpful)
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    // ---------------------------------------------------------
+    // File associations for common C++ headers
+    // ---------------------------------------------------------
+    "files.associations": {
+        "*.tpp": "cpp",
+        "*.hpp": "cpp",
+        "*.ipp": "cpp"
+    }
+}

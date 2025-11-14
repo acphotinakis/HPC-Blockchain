@@ -8,6 +8,8 @@
 *.swp
 
 
+.venv/
+
 # DEVELOPMENT
 
 .gemini_chats/

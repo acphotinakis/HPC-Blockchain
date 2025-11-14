@@ -1,6 +1,6 @@
 # Deep Dive: Parallelizing Blockchain Computations
 
-This document provides an exhaustive, byte-level explanation of the "Parallelizing Blockchain Computations" project. It synthesizes information from the project's documentation (`PROPOSAL.md`, `STRUCTURE.md`, `IMPLEMENTATION_PLAN.md`, etc.) and the conceptual C++/MPI source structure to offer a complete and in-depth understanding of its architecture, algorithms, and implementation.
+This document provides an exhaustive, byte-level explanation of the "Parallelizing Blockchain Computations" project. It synthesizes information from the project's documentation and source structure to offer a complete and in-depth understanding of its architecture, algorithms, and implementation, including correctness arguments, performance analysis, and failure modeling.
 
 ---
 
@@ -8,24 +8,22 @@ This document provides an exhaustive, byte-level explanation of the "Parallelizi
 
 ### The Problem: The Blockchain Bottleneck
 
-Traditional blockchains like Bitcoin operate on a **sequential, single-threaded model**. Every node in the network must process every transaction to validate it and add it to the ledger. This results in several critical limitations:
+Traditional blockchains operate on a **sequential, single-threaded model**. Every node must process every transaction, leading to:
 
-1.  **Low Throughput:** The number of transactions the network can process per second (TPS) is severely limited. For example, Bitcoin processes about 7 TPS, and Ethereum around 15-30 TPS. This is insufficient for large-scale applications like global payment systems or high-frequency trading.
-2.  **High Latency:** The time it takes for a transaction to be considered final (i.e., immutably recorded on the chain) can be long, often minutes or even hours.
-3.  **Poor Scalability:** As more users join the network, the transaction load increases, but the processing capacity remains fixed, leading to network congestion and higher transaction fees.
+1.  **Low Throughput:** Insufficient transactions per second (TPS) for large-scale applications.
+2.  **High Latency:** Long confirmation times for transactions.
+3.  **Poor Scalability:** Performance degrades as user load increases.
 
 ### The Goal: Achieving Parallelism with Sharding
 
-This project aims to solve the scalability problem by implementing **sharding**, a database partitioning technique adapted for blockchains.
+This project implements **sharding** to solve the scalability problem. The core idea is to **divide and conquer**:
 
-**The core idea is to divide and conquer:**
+1.  **Partition the Network:** The network is split into smaller, independent groups of nodes called **shards** or **committees**.
+2.  **Partition the Workload:** Transactions are divided among these shards.
+3.  **Parallel Consensus:** Each shard runs its own consensus algorithm (**Practical Byzantine Fault Tolerance - PBFT**) in parallel.
+4.  **Aggregate the Results:** A **Final Committee** collects the validated blocks from each shard and assembles the final, unified blockchain.
 
-1.  **Partition the Network:** Instead of one monolithic network where every node does the same work, the network is split into smaller, independent groups of nodes called **shards** or **committees**.
-2.  **Partition the Workload:** The global set of transactions is also divided among these shards. Each shard is only responsible for processing its own subset of transactions.
-3.  **Parallel Consensus:** Each shard runs its own consensus algorithm (in this case, **Practical Byzantine Fault Tolerance - PBFT**) in parallel with all other shards. This means multiple blocks of transactions are created and validated simultaneously.
-4.  **Aggregate the Results:** A special committee, the **Final Committee**, collects the validated blocks from each shard and assembles them into the final, unified blockchain.
-
-By doing this, the project aims to demonstrate a **near-linear increase in transaction throughput** as the number of shards increases, proving that parallel computing principles can effectively address the blockchain scalability bottleneck.
+This approach aims to demonstrate a **near-linear increase in transaction throughput** as the number of shards increases.
 
 ---
 
@@ -33,203 +31,177 @@ By doing this, the project aims to demonstrate a **near-linear increase in trans
 
 ### A. Message Passing Interface (MPI)
 
-MPI is the backbone of this simulation. It's a standardized library for writing parallel programs where processes communicate by sending and receiving messages.
+MPI is the backbone of this simulation, perfectly modeling a distributed network where each MPI process represents a single blockchain node.
 
--   **Why MPI?** It perfectly simulates a distributed network of blockchain nodes. Each MPI process represents a single node, and all communication between nodes (broadcasting transactions, sending consensus votes, etc.) is handled via MPI functions.
 -   **Key MPI Concepts Used:**
-    -   **`MPI_Process`**: A single running instance of the program. In this project, `1 MPI Process = 1 Blockchain Node`.
-    -   **`MPI_Comm` (Communicator)**: A group of processes that can communicate with each other. This is the most critical MPI concept for sharding. The project will use `MPI_COMM_WORLD` (all nodes) and then split it into smaller communicators for each shard (`shard_comm`) and the final committee (`final_comm`). This isolates communication, allowing shards to run consensus without interfering with each other.
+    -   **`MPI_Process`**: `1 MPI Process = 1 Blockchain Node`.
+    -   **`MPI_Comm` (Communicator)**: A group of processes. The project uses `MPI_COMM_WORLD` (all nodes) and splits it into smaller communicators for each shard (`shard_comm`) and the final committee (`final_comm`), isolating communication.
     -   **`MPI_Rank`**: A process's unique ID within a communicator.
     -   **Communication Patterns:**
-        -   **Point-to-Point (`MPI_Send`, `MPI_Recv`)**: Used for direct messages, like a shard leader sending its final block to the final committee.
-        -   **Collective (`MPI_Bcast`, `MPI_Allgather`)**: Used for group communication within a communicator. These are essential for the PBFT algorithm, where a leader broadcasts a proposal (`MPI_Bcast`) and all nodes gather votes from everyone else (`MPI_Allgather`).
+        -   **Point-to-Point (`MPI_Send`, `MPI_Recv`)**: For direct messages.
+        -   **Collective (`MPI_Bcast`, `MPI_Allgather`)**: For group communication within a communicator, essential for PBFT's voting phases.
 
 ### B. Practical Byzantine Fault Tolerance (PBFT)
 
-PBFT is the chosen **consensus algorithm**. It's designed to work in distributed systems where some nodes might be faulty or malicious (Byzantine faults).
+PBFT is the chosen **consensus algorithm**, designed to work in systems where some nodes might be faulty or malicious (Byzantine faults).
 
--   **Why PBFT?** It's a classic, well-understood algorithm that provides high performance and, crucially, **finality**. Once a block is committed via PBFT, it is final and cannot be reversed. This is a major advantage over probabilistic consensus like Bitcoin's Proof-of-Work.
 -   **Key Properties:**
-    -   **Safety:** The algorithm will never agree on two conflicting values (e.g., two different blocks at the same height).
-    -   **Liveness:** The algorithm will eventually agree on a value, assuming network conditions are stable.
-    -   **Fault Tolerance:** It can tolerate up to `f` Byzantine faulty nodes in a network of `N = 3f + 1` total nodes.
--   **The Three-Phase Protocol (The Core of PBFT):**
-    1.  **`PRE-PREPARE`**: The leader of a committee (the "primary") receives a client request (a batch of transactions), assigns it a sequence number, and broadcasts a `pre-prepare` message to all other nodes (the "replicas").
-    2.  **`PREPARE`**: Upon receiving the `pre-prepare` message, each replica validates it. If it's valid, the replica broadcasts a `prepare` message to all other nodes in the committee. This signals, "I agree with the leader's proposal." A node waits until it has received `2f` matching `prepare` messages from other nodes. This state is called **prepared**.
-    3.  **`COMMIT`**: Once a node is "prepared," it broadcasts a `commit` message. This signals, "I have seen proof that a quorum of nodes agrees on this proposal." A node waits until it has collected `2f + 1` matching `commit` messages (including its own). This state is called **committed**. At this point, the transaction block is considered finalized and is executed (added to the shard's local chain).
-
-This three-phase process ensures that a supermajority of honest nodes agree on the order of transactions before anything is made permanent.
+    -   **Safety:** The algorithm never agrees on conflicting values.
+    -   **Liveness:** The algorithm eventually agrees on a value.
+    -   **Fault Tolerance:** It can tolerate up to `f` Byzantine faulty nodes in a committee of size `N`, where `N >= 3f + 1`.
+-   **The Three-Phase Protocol:**
+    1.  **`PRE-PREPARE`**: The leader ("primary") proposes a block of transactions.
+    2.  **`PREPARE`**: Replicas validate the proposal and broadcast a `prepare` vote. A node waits until it has received `2f` matching `prepare` messages from others. This state is called **prepared**.
+    3.  **`COMMIT`**: Once "prepared," a node broadcasts a `commit` vote. It waits until it has collected `2f + 1` matching `commit` messages. At this point, the block is **committed** and considered final.
 
 ---
 
 ## 3. System Architecture & Component Deep Dive
 
-This section breaks down each C++ class and its role in the simulation, following the structure defined in `STRUCTURE.md` and the UML diagram.
+This section breaks down each C++ class and its role in the simulation.
 
 ```mermaid
 classDiagram
     direction LR
-
-    class Main {
-        <<Orchestrator>>
-        +main(argc, argv) void
-        +setupShards(int num_nodes, int num_shards) void
-        +distributeTransactions(List~Transaction~) void
-    }
-
-    class Node {
-        <<Data Container>>
-        -int global_rank
-        -int shard_rank
-        -int shard_id
-        -Role role
-    }
-
-    class Transaction {
-        <<Data Structure>>
-        -string id
-        -string sender
-        -string receiver
-        -double amount
-        +serialize() byte[]
-        +deserialize(byte[]) Transaction
-    }
-
-    class Block {
-        <<Data Structure>>
-        -int height
-        -string previous_hash
-        -long timestamp
-        -List~Transaction~ transactions
-    }
-
-    class Blockchain {
-        <<Ledger>>
-        -List~Block~ chain
-        +addBlock(Block) void
-        +isValid() bool
-    }
-
-    class Shard {
-        <<Committee Manager>>
-        -MPI_Comm shard_comm
-        -List~Node~ nodes
-        -List~Transaction~ transaction_pool
-        -PBFT pbft_instance
-        +runConsensus() Block
-    }
-
-    class PBFT {
-        <<Consensus Algorithm>>
-        -MPI_Comm communicator
-        -PBFT_State state
-        -List~Message~ message_log
-        +executeConsensus(List~Transaction~) Block
-        -broadcastPrePrepare() void
-        -broadcastPrepare() void
-        -broadcastCommit() void
-    }
-
-    Main ..> Node : Creates/Manages
-    Main ..> Shard : Creates/Manages
-    Main ..> Transaction : Generates
-    Main ..> Blockchain : Manages Final Chain
-
-    Shard "1" o-- "many" Node : Contains
-    Shard "1" *-- "1" PBFT : Owns/Uses
-    Shard "1" o-- "many" Transaction : Processes
-
-    PBFT ..> Transaction : Operates on
-    PBFT ..> Block : Creates
-
-    Blockchain "1" *-- "many" Block : Composed of
-    Block "1" *-- "many" Transaction : Composed of
+    class Main { <<Orchestrator>> }
+    class Node { <<Data Container>> }
+    class Transaction { <<Data Structure>> }
+    class Block { <<Data Structure>> }
+    class Blockchain { <<Ledger>> }
+    class Shard { <<Committee Manager>> }
+    class PBFT { <<Consensus Algorithm>> }
+    Main ..> Node
+    Main ..> Shard
+    Main ..> Transaction
+    Main ..> Blockchain
+    Shard "1" o-- "many" Node
+    Shard "1" *-- "1" PBFT
+    Shard "1" o-- "many" Transaction
+    PBFT ..> Transaction
+    PBFT ..> Block
+    Blockchain "1" *-- "many" Block
+    Block "1" *-- "many" Transaction
 ```
 
 ### `main.cpp` - The Orchestrator
-This is the entry point of the simulation. Its sole purpose is to set up and run the entire experiment.
-1.  **MPI Initialization**: Calls `MPI_Init` to start the MPI environment. Gets the total number of processes (`world_size`) and the rank of the current process (`world_rank`).
-2.  **Configuration**: The root process (rank 0) parses command-line arguments (`--shards`, `--transactions`) into an `ExperimentConfig` struct. This configuration is then broadcast to all other processes using `MPI_Bcast`. This ensures every node works with the same parameters.
-3.  **Network Partitioning**: This is the most critical setup step. It uses `MPI_Comm_split` to partition the `MPI_COMM_WORLD` communicator. Each process is assigned a `color` (its `shard_id`) and a `key` (its rank within the shard). All processes with the same `color` are grouped into a new communicator. This creates `N` shard communicators and one final committee communicator.
-4.  **Transaction Generation & Distribution**: The root process generates a large pool of mock `Transaction` objects. It then divides this pool into chunks, one for each shard. Using `MPI_Scatter` or point-to-point `MPI_Send`, it sends each shard leader its assigned chunk of transactions.
-5.  **Execution & Timing**: The root process starts a timer (`MPI_Wtime`). It then waits for the entire process to complete. Once the final committee has assembled the final block, the root process stops the timer and prints the total execution time. This output is used by `plot_results.py` to calculate performance metrics.
+The entry point of the simulation.
+1.  **MPI Initialization & Configuration**: Initializes MPI and broadcasts the `ExperimentConfig` struct to all nodes.
+2.  **Network Partitioning**: Uses `MPI_Comm_split` to partition nodes into `N` shard communicators and one final committee communicator.
+3.  **Transaction Generation & Distribution**: The root process generates mock transactions and distributes them to shard leaders.
+4.  **Execution & Timing**: The root process times the end-to-end process, from distribution to finalization.
 
 ### `node.h` / `node.cpp` - The Network Participant
-This is a simple data class. Each MPI process will have a `Node` object to represent itself. It holds state information:
--   `global_rank`: The node's rank in `MPI_COMM_WORLD`.
--   `shard_id`: The ID of the shard it belongs to.
--   `shard_rank`: The node's rank within its shard's communicator. This is important for identifying the shard leader (who is typically `shard_rank == 0`).
--   `role`: An enum indicating its role (e.g., `SHARD_MEMBER`, `FINAL_COMMITTEE_MEMBER`).
+A data class holding a node's state: `global_rank`, `shard_id`, `shard_rank`, and `role` (e.g., `SHARD_MEMBER`, `FINAL_COMMITTEE_MEMBER`).
 
 ### `transaction.h` / `transaction.cpp` - The Unit of Work
-Defines the `Transaction` data structure.
--   **Fields**: `id`, `sender`, `receiver`, `amount`.
--   **Serialization**: This is a critical feature. To send a `Transaction` object via MPI, it must be converted into a raw byte buffer. This class will contain `serialize()` and `deserialize()` methods.
-    -   `serialize()`: Packs the `id`, `sender`, etc., into a `char*` or `std::vector<char>`.
-    -   `deserialize()`: Takes a byte buffer received from MPI and reconstructs the `Transaction` object from it.
+Defines the `Transaction` data structure (`id`, `sender`, `receiver`, `amount`).
+-   **Serialization**: This is a critical feature for MPI communication.
+    -   **Implementation**: The class must provide `serialize()` and `deserialize()` methods. A robust implementation would handle variable-size fields and endianness. While manual byte packing is possible, using `MPI_Pack` and `MPI_Unpack` is safer as it abstracts away buffer management and alignment.
+    -   **Overhead**: Serialization/deserialization is a non-trivial CPU cost and a primary source of overhead. The choice of format (e.g., fixed-size binary vs. a text-based format like JSON) has significant performance implications.
 
 ### `shard.h` / `shard.cpp` - The Parallel Unit
-This class manages a single shard.
--   **Fields**:
-    -   `shard_comm`: The `MPI_Comm` for this shard, containing only the nodes of this shard.
-    -   `transaction_pool`: The subset of transactions assigned to this shard.
-    -   `pbft_instance`: An instance of the `PBFT` class, configured to run within `shard_comm`.
--   **Logic**:
-    1.  The shard leader receives transactions from the root process.
-    2.  The leader initiates the consensus process by calling `pbft_instance.executeConsensus(transaction_pool)`.
-    3.  The `PBFT` logic runs, using `shard_comm` for all its communication. This is what allows all shards to run consensus in parallel without interference.
-    4.  Once consensus is reached, the leader receives a validated `Block` from the PBFT module.
-    5.  The leader then sends this `Block` (or its header) to the final committee leader.
+Manages a single shard, holding its `MPI_Comm`, transaction pool, and a `PBFT` instance. It orchestrates the consensus process within its shard and sends the resulting block to the final committee.
 
 ### `pbft.h` / `pbft.cpp` - The Consensus Engine
-This is the implementation of the three-phase PBFT protocol.
--   **State Machine**: The class will manage the state of each node (`NEW`, `PRE-PREPARED`, `PREPARED`, `COMMITTED`).
--   **MPI Communication**:
-    -   **Pre-prepare**: The leader uses `MPI_Bcast` within its given communicator to send the proposed block to all replicas in its shard.
-    -   **Prepare/Commit**: Replicas need to broadcast their votes and also see everyone else's votes. `MPI_Allgather` is a perfect fit here. A process can place its vote into a buffer, and `MPI_Allgather` will collect the buffers from all processes in the communicator and distribute the combined result back to everyone. This allows each node to independently verify if `2f+1` votes have been cast.
--   **Output**: If consensus is successful, the `executeConsensus` method returns a finalized `Block` object to the caller (the `Shard` manager).
+The implementation of the three-phase PBFT protocol, managing the state machine (`NEW`, `PRE-PREPARED`, `PREPARED`, `COMMITTED`) for each node.
 
 ### `block.h` / `blockchain.h` / `blockchain.cpp` - The Ledger
--   `Block`: A data structure containing a list of `Transaction` objects, a block header (previous hash, timestamp), and a cryptographic hash of its own contents.
--   `Blockchain`: A class that manages the final, global chain, likely as a `std::vector<Block>`. It's primarily used by the **Final Committee**. Its main job is to receive blocks from the shards, verify them, and append them to the chain.
+-   **`Block` Data Structure**:
+    -   **Header**: Contains `height`, `timestamp`, and `previous_hash`.
+    -   **Transactions**: A list of `Transaction` objects.
+    -   **Hashing**: A cryptographic hash (e.g., **SHA-256**) is computed over the block's contents. For efficiency and verifiability, a **Merkle Tree** should be used to hash the transactions. The Merkle root is then included in the block header and becomes part of the overall block hash. This allows for lightweight verification of transaction inclusion without needing the full transaction list.
+-   **`Blockchain` Class**: Manages the final, global chain as a `std::vector<Block>`, used primarily by the Final Committee.
 
 ### `final_committee.h` / `final_committee.cpp` - The Aggregator
-This component is responsible for creating the single, canonical blockchain from the parallel work of the shards.
--   **Logic**:
-    1.  The leader of the final committee waits to receive validated blocks from the leader of each shard using `MPI_Recv`.
-    2.  As each block arrives, it's added to a temporary pool.
-    3.  Once blocks have been received from all shards, the final committee orders them (e.g., by shard ID) and links them together to form the final chain, which is managed by the `Blockchain` class.
-    4.  This finalization step signals the end of the simulation for one batch of transactions.
+This component creates the canonical blockchain from the parallel work of the shards.
+-   **Consensus Model**: In its simplest form, the Final Committee operates in a **single-leader model**. The leader (e.g., rank 0 of the final committee communicator) gathers all shard blocks and orders them deterministically (e.g., by shard ID). This is a **centralized bottleneck** and a single point of failure.
+-   **Correctness Guarantees**: This simple model does not provide fault tolerance for the finalization step. A misbehaving shard leader could submit a bad block, or the final committee leader could fail.
+-   **Robust Alternative**: A production-grade system would require the Final Committee to **also run a consensus protocol (like PBFT)** to agree on the set and order of incoming shard blocks. This would make the finalization process itself fault-tolerant but would add significant communication overhead. For this project, the single-leader model is assumed for simplicity.
 
 ---
 
-## 4. Performance Measurement & Experimentation
+## 4. Correctness, Fault Tolerance, and Network Assumptions
 
-The entire purpose of this complex setup is to generate performance data.
+### A. Fault Model and Simulation
+-   **Simulating Byzantine Faults**: The current simulation model assumes all nodes are **honest-but-curious**. They follow the protocol correctly. To simulate Byzantine faults, specific MPI ranks would be programmed to exhibit malicious behavior:
+    -   **Crash Fault**: The process calls `MPI_Finalize` and exits prematurely.
+    -   **Equivocation**: A faulty leader sends different `pre-prepare` messages (e.g., with different transaction orders) to different replicas.
+    -   **Message Dropping**: A faulty node deliberately fails to broadcast or send messages.
+    -   **Invalid Messages**: A node sends corrupted or improperly signed messages.
+    Implementing these is out of scope for the initial project but is essential for validating the robustness of the PBFT implementation.
 
-### Baseline (Serial) Model vs. Parallel (Sharded) Model
+-   **Node Failure Detection**: In this simulation, the failure of an MPI process is a catastrophic event that typically causes `MPI_Abort` to terminate the entire run. The model does not handle dynamic node crashes and recoveries. The PBFT `view-change` protocol is designed to handle leader failures, but its implementation is complex and often omitted in initial proofs of concept.
 
--   **Baseline Run**: The simulation is run with `--shards 1`. All nodes are placed in a single committee (`MPI_COMM_WORLD`) and must process all transactions sequentially. The time taken is `Time_Serial`.
--   **Parallel Run**: The simulation is run with `--shards N` where `N > 1`. The nodes are split into `N` shards, and the workload is divided. The time taken is `Time_Parallel`.
+### B. Shard Safety and Fault Thresholds
+-   **Shard Size**: The number of nodes per shard is determined by `(world_size - final_committee_size) / num_shards`.
+-   **Fault Threshold `f`**: The `faulty_nodes_per_shard` parameter (`f`) is set in the configuration. For PBFT to be safe, each shard must have at least `N = 3f + 1` nodes. This means the smallest possible shard size for tolerating one faulty node (`f=1`) is **4**. If a shard has fewer than `3f+1` nodes, it cannot guarantee safety or liveness in the presence of `f` faults.
 
-### Key Metrics
+### C. System-Level Correctness and Finality
+-   **Intra-Shard Consistency**: PBFT guarantees that all honest nodes within a shard agree on the same sequence of transactions and commit them in the same order. This provides **local finality**.
+-   **Global Consistency**: The Final Committee is responsible for establishing a **canonical global ordering** of the blocks produced by the shards. By ordering the shard blocks deterministically (e.g., based on `shard_id` for each round), it ensures that all nodes in the system will ultimately see the same final, global blockchain. This transforms local finality into global finality.
 
-The `run_experiment.sh` script automates these runs and logs the output. The `plot_results.py` script then parses this data to calculate:
-
-1.  **Throughput (TPS)**:
-    -   `Total Transactions / Time_Parallel(N)`
-    -   **Expected Result**: Throughput should increase as `N` (number of shards) increases.
-
-2.  **Latency**:
-    -   The total time measured (`Time_Parallel(N)`).
-    -   **Expected Result**: Latency for a fixed number of total transactions should decrease as `N` increases.
-
-3.  **Speedup**:
-    -   `Time_Serial / Time_Parallel(N)`
-    -   **Expected Result**: A value greater than 1, indicating a performance improvement. In an ideal world, speedup would be close to `N`, but communication overhead will reduce this.
+### D. Network Model Assumptions
+-   **Synchrony**: The model assumes a **weakly synchronous** network, where messages are guaranteed to be delivered within some bounded (but unknown) time. This is a standard assumption for PBFT.
+-   **Message Delivery**: The simulation relies on MPI, which provides **guaranteed, ordered message delivery** for point-to-point communication. This is a stronger guarantee than in real-world IP networks, where packets can be lost, duplicated, or reordered.
 
 ---
 
-## 5. Conclusion
+## 5. Inter-Shard Communication and Transactions
 
-This project is a deep and practical exploration of applying parallel computing principles to solve a real-world problem in distributed systems. By meticulously structuring the network into isolated communicators (shards) and running a well-defined consensus protocol (PBFT) within each, the simulation is designed to provide a clear, data-driven answer to the question: "How much faster can a blockchain be if we process transactions in parallel?" The combination of C++ for performance, MPI for network simulation, and a hierarchical sharding architecture provides a powerful framework for studying and quantifying the benefits of parallelization.
+-   **Cross-Shard Transactions**: This simulation makes a simplifying assumption: all transactions are contained within a single shard. The root process pre-partitions transactions accordingly.
+-   **Why this is a simplification**: Real-world applications require cross-shard transactions (e.g., a user in shard A sending funds to a user in shard B).
+-   **Handling Cross-Shard Transactions**: Supporting them would require a complex protocol, such as a **two-phase commit (2PC)**, to ensure atomicity. The transaction would need to be "prepared" in the source shard and "committed" in the destination shard, with a coordinating mechanism to ensure it either completes in both or is aborted in both. This is a significant research challenge and is considered out of scope.
+
+---
+
+## 6. Communication Complexity and Performance Bottlenecks
+
+### A. PBFT Message Complexity
+The communication cost of PBFT within a single shard of size `N` is dominated by the all-to-all broadcast nature of the `prepare` and `commit` phases.
+-   In each phase, each of the `N` nodes sends a message to all `N-1` other nodes.
+-   This results in **O(N²) message complexity per consensus round**. This cost means that while sharding allows for parallelism *across* shards, the size of individual shards is a critical performance parameter. Very large shards will suffer from high internal communication overhead.
+
+### B. MPI Communication Costs
+-   **`MPI_Bcast`**: Typically implemented with a tree-based algorithm, costing **O(log N)** time.
+-   **`MPI_Allgather`**: Requires each of the `N` processes to receive data from all others, costing **O(N log N)** or **O(N)** depending on the implementation and message size.
+-   These collective operations introduce synchronization points, where faster nodes must wait for slower ones, adding to latency.
+
+### C. Expected Performance Bottlenecks
+1.  **The Final Committee**: As the single point of aggregation, this is the primary serial bottleneck. Its existence limits the maximum achievable speedup, a classic example of **Amdahl's Law**.
+2.  **Intra-Shard `O(N²)` Messaging**: As shard sizes grow, the cost of PBFT consensus will eventually dominate the computation time, limiting the benefits of adding more nodes to a shard.
+3.  **Serialization Overhead**: The CPU cost of packing and unpacking `Transaction` objects into byte buffers for MPI can be significant, especially with large transaction batches.
+
+---
+
+## 7. Execution Timeline and Object Lifecycle
+
+A typical execution flow for a single round of consensus:
+1.  **`main()`**: `MPI_Init` is called.
+2.  **Setup**: The root process broadcasts the configuration. `MPI_Comm_split` is called by all processes, creating shard and final committee communicators. `Node`, `Shard`, and `PBFT` objects are constructed.
+3.  **Distribution**: The root process generates and scatters transactions to the shard leaders.
+4.  **Parallel Consensus (Concurrent Execution)**:
+    -   Each `Shard` leader receives its transactions.
+    -   Each `Shard` object calls `pbft_instance.executeConsensus()`.
+    -   Inside `PBFT`, the leader `MPI_Bcast`s a `pre-prepare` message on its `shard_comm`.
+    -   Replicas use `MPI_Allgather` on `shard_comm` to exchange `prepare` and `commit` votes.
+    -   This happens in all shards simultaneously.
+5.  **Aggregation**:
+    -   Each shard leader, upon successful consensus, sends its new `Block` to the final committee leader via `MPI_Send`.
+    -   The final committee leader uses `MPI_Recv` in a loop to collect one block from each shard leader.
+6.  **Finalization**: The final committee leader assembles the blocks into the global `Blockchain`.
+7.  **Timing**: The root process stops the timer and reports the total time.
+8.  **Teardown**: Objects are destructed, and `MPI_Finalize` is called.
+
+---
+
+## 8. Experiment Methodology and Performance Theory
+
+### A. Scientific Rigor
+To ensure statistically valid results, the methodology must include:
+-   **Multiple Trials**: Each experiment configuration (e.g., 8 shards, 10k transactions) must be run multiple times (e.g., 5-10 trials) to compute the mean and standard deviation of performance metrics.
+-   **Parameter Documentation**: All runs must log the exact configuration: total nodes, shard count, nodes per shard, `f`, transaction count, and hardware used (`kraken` cluster specifications).
+-   **Error Bars**: Performance graphs (TPS, Latency) must include error bars to visualize the variance across trials.
+
+### B. Theoretical Performance Limits
+-   **Amdahl's Law**: The speedup of a parallel program is limited by its serial portion. In this project, the initial transaction distribution and the final block aggregation by the Final Committee are serial bottlenecks. As the number of shards (`N`) approaches infinity, the maximum speedup is capped by `1 / (serial_fraction)`.
+-   **Gustafson's Law (Weak Scaling)**: This law suggests that instead of doing the same work faster (strong scaling), one can use more processors to do more work in the same amount of time. For this project, it means that if we double the number of shards, we should be able to process double the number of total transactions in roughly the same time, assuming the system scales well.
