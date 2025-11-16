@@ -2,6 +2,7 @@
 
 ## Project Structure
 
+```
 .
 ├── Makefile
 ├── build/
@@ -50,7 +51,7 @@
 └── tests/
     ├── test_pbft.cpp
     └── test_sharding.cpp
-
+```
 ## Overview
 
 This project addresses the critical scalability bottleneck in traditional blockchain architectures by implementing a parallel blockchain algorithm using sharding. Our goal is to demonstrate significant performance improvements in transaction throughput and latency by leveraging parallel computing principles.
