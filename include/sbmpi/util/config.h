@@ -12,30 +12,31 @@
  * such as the number of shards, number of transactions, etc.
  */
 
-class Config {
-public:
-    // The total number of nodes in the simulation.
-    int numNodes = 0;
-    // The number of shards to partition the network into.
-    int numShards = 1;
-    // The total number of transactions to generate and process.
-    int numTransactions = 1000;
-    // Verbosity level for logging.
-    int verbose = 1;
+class Config
+{
+ public:
+  // The total number of nodes in the simulation.
+  int numNodes = 0;
+  // The number of shards to partition the network into.
+  int numShards = 1;
+  // The total number of transactions to generate and process.
+  int numTransactions = 1000;
+  // Verbosity level for logging.
+  int verbose = 1;
 
-    /**
-     * @brief Parses command-line arguments to populate configuration settings.
-     *
-     * @param argc The argument count.
-     * @param argv The argument vector.
-     * @return true if parsing was successful, false otherwise.
-     */
-    bool parse(int argc, char** argv);
+  /**
+   * @brief Parses command-line arguments to populate configuration settings.
+   *
+   * @param argc The argument count.
+   * @param argv The argument vector.
+   * @return true if parsing was successful, false otherwise.
+   */
+  bool parse(int argc, char** argv);
 
-    /**
-     * @brief Prints the current configuration settings.
-     */
-    void print() const;
+  /**
+   * @brief Prints the current configuration settings.
+   */
+  void print() const;
 };
 
-#endif // SBMPI_CONFIG_H
+#endif  // SBMPI_CONFIG_H
