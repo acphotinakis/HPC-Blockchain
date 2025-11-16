@@ -1,6 +1,6 @@
-# UML Class Diagram
+# UML Class Diagram (Updated)
 
-This document contains a UML class diagram representing the planned software architecture for the Parallelizing Blockchain Computations project. The diagram is based on the analysis of the `CONCEPT_MAP.md`, `IMPLEMENTATION_PLAN.md`, and `STRUCTURE.md` documents.
+This document contains an updated UML class diagram representing the implemented software architecture. This diagram reflects the more detailed and modular structure of the final codebase.
 
 ```mermaid
 classDiagram
@@ -9,89 +9,122 @@ classDiagram
     class Main {
         <<Orchestrator>>
         +main(argc, argv) void
-        +setupShards(int num_nodes, int num_shards) void
-        +distributeTransactions(List~Transaction~) void
+    }
+
+    class Config {
+        <<Utility>>
+        +int num_shards
+        +int num_transactions
+        +parse(argc, argv) bool
     }
 
     class Node {
         <<Data Container>>
         -int global_rank
-        -int shard_rank
         -int shard_id
-        -Role role
+        -NodeRole role
     }
 
     class Transaction {
         <<Data Structure>>
         -string id
-        -string sender
-        -string receiver
-        -double amount
-        +serialize() byte[]
-        +deserialize(byte[]) Transaction
+        +serialize() vector~char~
+        +deserialize(vector~char~) void
     }
 
     class Block {
+        <<Abstract>>
+        #BlockHeader header
+        #vector~Transaction~ transactions
+        +getHash() string
+        +serialize() vector~char~
+        +deserialize(vector~char~) void
+    }
+
+    class MicroBlock {
+        <<Concrete Block>>
+        -int shard_id
+    }
+
+    class MacroBlock {
+        <<Concrete Block>>
+        -vector~string~ micro_block_hashes
+    }
+
+    class BlockHeader {
         <<Data Structure>>
-        -int height
         -string previous_hash
-        -long timestamp
-        -List~Transaction~ transactions
+        -string merkle_root
+        +hash() string
     }
 
     class Blockchain {
         <<Ledger>>
-        -List~Block~ chain
-        +addBlock(Block) void
-        +isValid() bool
+        -vector~unique_ptr~Block~~ chain
+        +addBlock(unique_ptr~Block~) void
     }
 
     class Shard {
         <<Committee Manager>>
         -MPI_Comm shard_comm
-        -List~Node~ nodes
-        -List~Transaction~ transaction_pool
+        -vector~Transaction~ mempool
         -PBFT pbft_instance
-        +runConsensus() Block
+        +runConsensus() MicroBlock
+    }
+
+    class FinalCommittee {
+        <<Committee Manager>>
+        -MPI_Comm final_comm
+        +collectMicroBlocks() vector~MicroBlock~
+        +assembleMacroBlock(vector~MicroBlock~) MacroBlock
     }
 
     class PBFT {
         <<Consensus Algorithm>>
         -MPI_Comm communicator
-        -PBFT_State state
-        -List~Message~ message_log
-        +executeConsensus(List~Transaction~) Block
-        -broadcastPrePrepare() void
-        -broadcastPrepare() void
-        -broadcastCommit() void
+        +run(vector~Transaction~) MicroBlock
     }
 
-    Main ..> Node : Creates/Manages
-    Main ..> Shard : Creates/Manages
-    Main ..> Transaction : Generates
-    Main ..> Blockchain : Manages Final Chain
+    Main ..> Config : Uses
+    Main ..> Node : Creates
+    Main ..> Shard : Creates
+    Main ..> FinalCommittee : Creates
+    Main ..> Blockchain : Manages
 
-    Shard "1" o-- "many" Node : Contains
     Shard "1" *-- "1" PBFT : Owns/Uses
-    Shard "1" o-- "many" Transaction : Processes
+    Shard "1" o-- "many" Transaction : Manages in Mempool
+    Shard ..> MicroBlock : Creates
+
+    FinalCommittee ..> MicroBlock : Collects
+    FinalCommittee ..> MacroBlock : Creates
+
+    Blockchain "1" *-- "many" Block : Composed of (Polymorphic)
+    Block <|-- MicroBlock
+    Block <|-- MacroBlock
+    Block "1" *-- "1" BlockHeader : Contains
+    MicroBlock "1" *-- "many" Transaction : Contains
+    MacroBlock "1" o-- "many" MicroBlock : Aggregates Hashes Of
 
     PBFT ..> Transaction : Operates on
-    PBFT ..> Block : Creates
-
-    Blockchain "1" *-- "many" Block : Composed of
-    Block "1" *-- "many" Transaction : Composed of
+    PBFT ..> MicroBlock : Produces
 ```
 
-## Diagram Legend
+## Diagram Legend (Updated)
 
--   **`Main`**: The main driver of the simulation. It initializes MPI, partitions nodes into shards, generates and distributes transactions, and orchestrates the overall workflow.
--   **`Node`**: A simple data class representing a single MPI process, holding its rank and role within the system.
--   **`Transaction`**: A data structure for a single transaction. It must be serializable to be sent over the network.
--   **`Block`**: A data structure containing a list of transactions and a header with metadata, forming one link in the blockchain.
--   **`Blockchain`**: Represents the final, global ledger, which is a collection of blocks aggregated from all shards.
--   **`Shard`**: Manages a committee of nodes. It holds the shard-specific MPI communicator, its transaction pool, and orchestrates the consensus process by using its `PBFT` instance.
--   **`PBFT`**: The core consensus engine. It runs within a shard's communicator to validate a set of transactions and produce a block.
+-   **`Main`**: The simulation driver. Uses `Config` to set up the environment, then creates and manages `Shard`s and the `FinalCommittee`.
+-   **`Config`**: Parses and holds simulation parameters.
+-   **`Node`**: Holds a process's identity and role.
+-   **`Transaction`**: A serializable data structure for a single transaction.
+-   **`Block`**: Abstract base class for blocks.
+-   **`MicroBlock`**: Concrete block produced by a `Shard`. Contains transactions.
+-   **`MacroBlock`**: Concrete block produced by the `FinalCommittee`. Contains hashes of `MicroBlock`s.
+-   **`BlockHeader`**: Metadata for a `Block`.
+-   **`Blockchain`**: The global ledger, composed of a polymorphic list of `Block`s (primarily `MacroBlock`s).
+-   **`Shard`**: Manages a shard committee, its `Mempool`, and runs a `PBFT` instance to produce a `MicroBlock`.
+-   **`FinalCommittee`**: Manages the final committee, which collects `MicroBlock`s and assembles them into `MacroBlock`s.
+-   **`PBFT`**: The consensus engine that validates transactions and creates a `MicroBlock`.
 -   **Relationships**:
     -   `..>` : Dependency (Uses)
     -   `o--` : Aggregation (Has-a)
     -   `*--` : Composition (Owns-a)
+    -   `<|--`: Inheritance

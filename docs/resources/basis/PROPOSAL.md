@@ -29,7 +29,7 @@ Our model will be hierarchical and structured as follows:
 
 - **Parallel Block Creation:** Because each committee processes its transactions independently, multiple transaction blocks can be created and validated in parallel.  
 
-- **Final Committee:** Upon reaching consensus, each committee will send its validated block (or block header) to a "final committee." This final committee is responsible for verifying the committee signatures and assembling the final, ordered blockchain.  
+- **Final Committee:** Upon reaching consensus, each committee will send its validated **MicroBlock** to a "final committee." This final committee is responsible for verifying the committee signatures and assembling the final, ordered blockchain by creating a **MacroBlock** that aggregates the results.  
 
 
 ### Conceptual Flow
