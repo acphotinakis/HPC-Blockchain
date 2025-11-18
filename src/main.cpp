@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 
+#include "../../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/consensus/pbft.h"
 #include "../include/sbmpi/core/blockchain.h"
 #include "../include/sbmpi/core/node.h"
@@ -10,7 +11,6 @@
 #include "../include/sbmpi/network/shard.h"
 #include "../include/sbmpi/util/config.h"
 #include "../include/sbmpi/util/errors.h"
-#include "../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/util/metrics.h"
 #include "../include/sbmpi/util/timer.h"
 #include "mpi.h"

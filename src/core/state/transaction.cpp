@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "../../../include/sbmpi/util/crypto.h"
-#include "../../include/sbmpi/util/serialization.h"
+#include "../../../include/sbmpi/util/serialization.h"
 
 namespace sbmpi
 {
