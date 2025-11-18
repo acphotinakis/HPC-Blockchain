@@ -4,51 +4,35 @@
 #include <sstream>
 #include <string>
 
-/**
- * @file logging.h
- * @brief Defines a simple logging utility for the simulation.
- *
- * This provides a basic, thread-safe logging mechanism to print formatted
- * messages to the console, prefixed with node-specific information.
- */
-
-// Defines different levels of logging verbosity.
-enum class LogLevel {
-  NONE,
-  ERROR,
-  INFO,
-  DEBUG
-};
-
-class Logger
+namespace sbmpi
 {
- public:
-  /**
-   * @brief Sets the logging level for the application.
-   *
-   * @param level The maximum log level to display.
-   */
-  static void setLevel(LogLevel level);
+  namespace util
+  {
 
-  /**
-   * @brief Logs a message.
-   *
-   * @param level The level of the message.
-   * @param message The message to log.
-   */
-  static void log(LogLevel level, const std::string& message);
+    enum class LogLevel {
+      NONE,
+      ERROR,
+      INFO,
+      DEBUG
+    };
 
- private:
-  static LogLevel currentLevel;
-};
+    class Logger
+    {
+     public:
+      static void setLevel(LogLevel level);
+      static void log(LogLevel level, const std::string& message);
 
-// A helper macro for easy logging
+     private:
+      static LogLevel currentLevel;
+    };
+
 #define LOG(level, message) \
   do {                      \
-    std::stringstream ss;
-ss << message;
-Logger::log(level, ss.str());
-}
-while (0)
+    std::stringstream ss;   \
+    ss << message;
+    Logger::log(level, ss.str());
+  }  // namespace util
+  while (0) }  // namespace sbmpi
+}  // namespace sbmpi
 
 #endif  // SBMPI_LOGGING_H

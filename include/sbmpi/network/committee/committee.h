@@ -5,48 +5,30 @@
 #include "../../core/node.h"
 #include "mpi.h"
 
-/**
- * @file committee.h
- * @brief Defines an abstract base class for different types of committees.
- *
- * This file provides the interface for the Committee class, which serves as a
- * base for concrete committee implementations like Shard and FinalCommittee.
- * It defines the common properties of a committee, such as its MPI communicator
- * and the list of nodes it contains. The implementation is in
- * `src/network/committee/committee.cpp`.
- */
-
-class Committee
+namespace sbmpi
 {
- public:
-  /**
-   * @brief Virtual destructor.
-   */
-  virtual ~Committee() = default;
+  namespace network
+  {
+    namespace committee
+    {
 
-  /**
-   * @brief Gets the MPI communicator for this committee.
-   * @return The MPI_Comm handle.
-   */
-  MPI_Comm getCommunicator() const;
+      class Committee
+      {
+       public:
+        virtual ~Committee() = default;
+        MPI_Comm getCommunicator() const;
+        int      getSize() const;
+        int      getRank() const;
 
-  /**
-   * @brief Gets the number of nodes in the committee.
-   * @return The size of the committee.
-   */
-  int getSize() const;
+       protected:
+        MPI_Comm                communicator;
+        std::vector<core::Node> nodes;
+        int                     size;
+        int                     rank;
+      };
 
-  /**
-   * @brief Gets the rank of the current process within the committee.
-   * @return The committee-local rank.
-   */
-  int getRank() const;
-
- protected:
-  MPI_Comm          communicator;
-  std::vector<Node> nodes;
-  int               size;
-  int               rank;
-};
+    }  // namespace committee
+  }  // namespace network
+}  // namespace sbmpi
 
 #endif  // SBMPI_COMMITTEE_H

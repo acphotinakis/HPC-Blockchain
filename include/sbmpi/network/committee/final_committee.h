@@ -2,62 +2,32 @@
 #define SBMPI_FINAL_COMMITTEE_H
 
 #include <vector>
-#include "../core/blocks/macro_block.h"
-#include "../core/blocks/micro_block.h"
+#include "../../core/blocks/macro_block.h"
+#include "../../core/blocks/micro_block.h"
 #include "mpi.h"
 
-/**
- * @file final_committee.h
- * @brief Defines the FinalCommittee class for aggregating blocks from shards.
- *
- * The FinalCommittee is responsible for collecting validated MicroBlocks from
- * all shards, verifying them, and assembling them into a MacroBlock. This
- * MacroBlock represents the final, authoritative state of the blockchain for a
- * given epoch.
- */
-
-class FinalCommittee
+namespace sbmpi
 {
- public:
-  /**
-   * @brief Constructor for the FinalCommittee.
-   *
-   * @param comm The MPI communicator for the final committee members.
-   */
-  FinalCommittee(MPI_Comm comm);
+  namespace network
+  {
+    namespace committee
+    {
 
-  /**
-   * @brief Destructor for the FinalCommittee.
-   *
-   * Cleans up MPI resources.
-   */
-  ~FinalCommittee();
+      class FinalCommittee
+      {
+       public:
+        FinalCommittee(MPI_Comm comm);
+        ~FinalCommittee();
+        std::vector<core::blocks::MicroBlock> collectMicroBlocks(int numShards);
+        core::blocks::MacroBlock              assembleMacroBlock(
+                         const std::vector<core::blocks::MicroBlock>& microBlocks);
 
-  /**
-   * @brief Listens for and collects MicroBlocks from all shard leaders.
-   *
-   * This function will likely involve MPI_Gather or repeated MPI_Recv calls
-   * to receive the results of each shard's consensus.
-   *
-   * @param numShards The total number of shards to expect blocks from.
-   * @return A vector of the collected MicroBlocks.
-   */
-  std::vector<MicroBlock> collectMicroBlocks(int numShards);
+       private:
+        MPI_Comm communicator;
+      };
 
-  /**
-   * @brief Assembles a MacroBlock from a collection of MicroBlocks.
-   *
-   * This involves creating a MacroBlock, adding the hashes of the microblocks,
-   * and finalizing the block for inclusion in the global blockchain.
-   *
-   * @param microBlocks The vector of MicroBlocks to assemble.
-   * @return The newly created MacroBlock.
-   */
-  MacroBlock assembleMacroBlock(const std::vector<MicroBlock>& microBlocks);
-
- private:
-  MPI_Comm communicator;
-  // Internal state for the final committee would be managed here.
-};
+    }  // namespace committee
+  }  // namespace network
+}  // namespace sbmpi
 
 #endif  // SBMPI_FINAL_COMMITTEE_H

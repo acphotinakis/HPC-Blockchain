@@ -3,40 +3,24 @@
 
 #include <string>
 
-/**
- * @file config.h
- * @brief Defines a configuration loading and management utility.
- *
- * The Config class is responsible for parsing command-line arguments or reading
- * a configuration file to set up the parameters for the blockchain simulation,
- * such as the number of shards, number of transactions, etc.
- */
-
-class Config
+namespace sbmpi
 {
- public:
-  // The total number of nodes in the simulation.
-  int numNodes = 0;
-  // The number of shards to partition the network into.
-  int numShards = 1;
-  // The total number of transactions to generate and process.
-  int numTransactions = 1000;
-  // Verbosity level for logging.
-  int verbose = 1;
+  namespace util
+  {
 
-  /**
-   * @brief Parses command-line arguments to populate configuration settings.
-   *
-   * @param argc The argument count.
-   * @param argv The argument vector.
-   * @return true if parsing was successful, false otherwise.
-   */
-  bool parse(int argc, char** argv);
+    class Config
+    {
+     public:
+      int numNodes        = 0;
+      int numShards       = 1;
+      int numTransactions = 1000;
+      int verbose         = 1;
 
-  /**
-   * @brief Prints the current configuration settings.
-   */
-  void print() const;
-};
+      bool parse(int argc, char** argv);
+      void print() const;
+    };
+
+  }  // namespace util
+}  // namespace sbmpi
 
 #endif  // SBMPI_CONFIG_H
