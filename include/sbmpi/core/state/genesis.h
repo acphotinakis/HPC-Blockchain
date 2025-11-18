@@ -4,14 +4,17 @@
 #include <memory>
 #include "../blocks/macro_block.h"
 
-namespace sbmpi {
-namespace core {
-namespace state {
+namespace sbmpi
+{
+  namespace core
+  {
+    namespace state
+    {
 
-std::unique_ptr<blocks::MacroBlock> createGenesisBlock();
+      std::unique_ptr<blocks::MacroBlock> createGenesisBlock();
 
-}  // namespace state
-}  // namespace core
+    }  // namespace state
+  }  // namespace core
 }  // namespace sbmpi
 
 #endif  // SBMPI_GENESIS_H
