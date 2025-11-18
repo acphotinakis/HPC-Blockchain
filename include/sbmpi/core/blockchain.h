@@ -5,24 +5,27 @@
 #include <vector>
 #include "blocks/block.h"
 
-namespace sbmpi {
-namespace core {
+namespace sbmpi
+{
+  namespace core
+  {
 
-class Blockchain {
- public:
-  Blockchain();
-  void addBlock(std::unique_ptr<blocks::Block> block);
-  const blocks::Block* getBlock(int height) const;
-  const blocks::Block* getLatestBlock() const;
-  bool validate() const;
-  int getHeight() const;
+    class Blockchain
+    {
+     public:
+      Blockchain();
+      void                 addBlock(std::unique_ptr<blocks::Block> block);
+      const blocks::Block* getBlock(int height) const;
+      const blocks::Block* getLatestBlock() const;
+      bool                 validate() const;
+      int                  getHeight() const;
 
- private:
-  std::vector<std::unique_ptr<blocks::Block>> chain;
-  void createGenesisBlock();
-};
+     private:
+      std::vector<std::unique_ptr<blocks::Block>> chain;
+      void                                        createGenesisBlock();
+    };
 
-}  // namespace core
+  }  // namespace core
 }  // namespace sbmpi
 
 #endif  // SBMPI_BLOCKCHAIN_H

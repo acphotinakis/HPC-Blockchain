@@ -1,62 +1,70 @@
-#include "../../include/sbmpi/core/blocks/micro_block.h"
+#include "../../../include/sbmpi/core/blocks/micro_block.h"
 
 #include <vector>
 
-#include "../../include/sbmpi/util/serialization.h"
+#include "../../../include/sbmpi/util/serialization.h"
 
-namespace sbmpi {
-namespace core {
-namespace blocks {
+namespace sbmpi
+{
+  namespace core
+  {
+    namespace blocks
+    {
 
-MicroBlock::MicroBlock() : shardId(0) {}
+      MicroBlock::MicroBlock() : shardId(0) {}
 
-MicroBlock::MicroBlock(int shardId) : shardId(shardId) {}
+      MicroBlock::MicroBlock(int shardId) : shardId(shardId) {}
 
-std::string MicroBlock::getType() const { return "MicroBlock"; }
+      std::string MicroBlock::getType() const
+      {
+        return "MicroBlock";
+      }
 
-std::vector<char> MicroBlock::serialize() const {
-  std::vector<char> buffer;
+      std::vector<char> MicroBlock::serialize() const
+      {
+        std::vector<char> buffer;
 
-  std::vector<char> headerData = header.serialize();
-  util::pack(static_cast<int>(headerData.size()), buffer);
-  buffer.insert(buffer.end(), headerData.begin(), headerData.end());
+        std::vector<char> headerData = header.serialize();
+        util::pack(static_cast<int>(headerData.size()), buffer);
+        buffer.insert(buffer.end(), headerData.begin(), headerData.end());
 
-  util::pack(shardId, buffer);
+        util::pack(shardId, buffer);
 
-  util::pack(static_cast<int>(transactions.size()), buffer);
-  for (const auto& tx : transactions) {
-    std::vector<char> txData = tx.serialize();
-    util::pack(static_cast<int>(txData.size()), buffer);
-    buffer.insert(buffer.end(), txData.begin(), txData.end());
-  }
+        util::pack(static_cast<int>(transactions.size()), buffer);
+        for (const auto& tx : transactions) {
+          std::vector<char> txData = tx.serialize();
+          util::pack(static_cast<int>(txData.size()), buffer);
+          buffer.insert(buffer.end(), txData.begin(), txData.end());
+        }
 
-  return buffer;
-}
+        return buffer;
+      }
 
-void MicroBlock::deserialize(const std::vector<char>& data) {
-  int offset = 0;
+      void MicroBlock::deserialize(const std::vector<char>& data)
+      {
+        int offset = 0;
 
-  int headerSize = util::unpack_int(data, offset);
-  std::vector<char> headerVec(data.begin() + offset,
-                              data.begin() + offset + headerSize);
-  header.deserialize(headerVec);
-  offset += headerSize;
+        int               headerSize = util::unpack_int(data, offset);
+        std::vector<char> headerVec(data.begin() + offset,
+                                    data.begin() + offset + headerSize);
+        header.deserialize(headerVec);
+        offset += headerSize;
 
-  shardId = util::unpack_int(data, offset);
+        shardId = util::unpack_int(data, offset);
 
-  transactions.clear();
-  int numTransactions = util::unpack_int(data, offset);
-  for (int i = 0; i < numTransactions; ++i) {
-    int txSize = util::unpack_int(data, offset);
-    std::vector<char> txData(data.begin() + offset,
-                             data.begin() + offset + txSize);
-    state::Transaction tx;
-    tx.deserialize(txData);
-    transactions.push_back(tx);
-    offset += txSize;
-  }
-}
+        transactions.clear();
+        int numTransactions = util::unpack_int(data, offset);
+        for (int i = 0; i < numTransactions; ++i) {
+          int                txSize = util::unpack_int(data, offset);
+          std::vector<char>  txData(data.begin() + offset,
+                                    data.begin() + offset + txSize);
+          state::Transaction tx;
+          tx.deserialize(txData);
+          transactions.push_back(tx);
+          offset += txSize;
+        }
+      }
 
-}  // namespace blocks
-}  // namespace core
+    }  // namespace blocks
+  }  // namespace core
 }  // namespace sbmpi
