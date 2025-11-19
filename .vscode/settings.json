@@ -22,5 +22,11 @@
         "*.tpp": "cpp",
         "*.hpp": "cpp",
         "*.ipp": "cpp"
+    },
+    "files.exclude": {
+        "**/.*": true,
+        "build": false,
+        "scripts": true,
+        "block_*.json": true
     }
 }
