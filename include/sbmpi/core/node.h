@@ -11,7 +11,8 @@ namespace sbmpi
     enum class NodeRole {
       SHARD_MEMBER,
       SHARD_LEADER,
-      FINAL_COMMITTEE_MEMBER
+      FINAL_COMMITTEE_MEMBER,
+      UNASSIGNED
     };
 
     class Node
