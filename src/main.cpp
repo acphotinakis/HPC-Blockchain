@@ -2,13 +2,14 @@
 #include <memory>
 #include <vector>
 
-#include "../../include/sbmpi/util/logging.h"
+#include "../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/consensus/pbft.h"
 #include "../include/sbmpi/core/blockchain.h"
 #include "../include/sbmpi/core/node.h"
 #include "../include/sbmpi/core/state/transaction.h"
 #include "../include/sbmpi/network/committee/final_committee.h"
 #include "../include/sbmpi/network/shard.h"
+#include "../include/sbmpi/network/mpi_wrapper.h"
 #include "../include/sbmpi/util/config.h"
 #include "../include/sbmpi/util/errors.h"
 #include "../include/sbmpi/util/metrics.h"
@@ -23,6 +24,8 @@ int main(int argc, char** argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   int world_size;
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+  sbmpi::util::Logger logger = sbmpi::util::Logger::getLogger();
 
   sbmpi::util::Config config;
   if (!config.parse(argc, argv)) {
@@ -71,7 +74,7 @@ int main(int argc, char** argv)
     MPI_Comm_split(MPI_COMM_WORLD, shardId, world_rank, &shard_comm);
     myShard = new sbmpi::network::Shard(shardId, shard_comm, leaderRank);
 
-    sbmpi::util::Logger::log(sbmpi::util::LogLevel::INFO,
+    logger.log(sbmpi::util::LogLevel::INFO,
                              "Node " + std::to_string(world_rank) +
                                  " is shard member of shard " +
                                  std::to_string(shardId) + " with rank " +
@@ -82,7 +85,7 @@ int main(int argc, char** argv)
     myNode.setShardInfo(-1, -1, sbmpi::core::NodeRole::FINAL_COMMITTEE_MEMBER);
     finalCommittee =
         new sbmpi::network::committee::FinalCommittee(MPI_COMM_WORLD);
-    sbmpi::util::Logger::log(
+    logger.log(
         sbmpi::util::LogLevel::INFO,
         "Node " + std::to_string(world_rank) + " is final committee leader.");
   }
@@ -99,7 +102,9 @@ int main(int argc, char** argv)
     for (int i = 0; i < config.numTransactions / world_size; ++i) {
       sbmpi::core::state::Transaction tx(
           "sender_" + std::to_string(world_rank),
-          "receiver_" + std::to_string(world_rank), 1.0);
+          "receiver_" + std::to_string(world_rank), 
+          1.0
+        );
       tx.sign("private_key_" + std::to_string(world_rank));
       transactions.push_back(tx);
       myShard->addTransaction(tx);
@@ -125,7 +130,7 @@ int main(int argc, char** argv)
         finalCommittee->assembleMacroBlock(collectedMicroBlocks);
     blockchain.addBlock(
         std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
-    sbmpi::util::Logger::log(sbmpi::util::LogLevel::INFO,
+    logger.log(sbmpi::util::LogLevel::INFO,
                              "MacroBlock assembled and added to blockchain.");
   }
 
@@ -136,7 +141,7 @@ int main(int argc, char** argv)
     sbmpi::util::Metrics::recordTime("total_simulation", elapsed_time,
                                      config.numTransactions);
     sbmpi::util::Metrics::save("metrics.csv");
-    sbmpi::util::Logger::log(
+    logger.log(
         sbmpi::util::LogLevel::INFO,
         "Simulation finished in " + std::to_string(elapsed_time) + " seconds.");
   }

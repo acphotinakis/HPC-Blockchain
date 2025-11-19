@@ -1,7 +1,7 @@
-#include "../core/mempool/mempool.h"
+#include "sbmpi/core/mempool/mempool.h"
 #include <algorithm>
 #include <vector>
-#include "../state/transaction.h"
+#include "sbmpi/core/state/transaction.h"
 namespace sbmpi
 {
   namespace core

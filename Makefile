@@ -86,7 +86,7 @@ all: $(TARGET)
 $(TARGET): $(MAIN_OBJ) $(LIB_OBJS)
 	@echo "Linking main target: $@"
 	@mkdir -p $(@D) # Ensure the 'build' directory exists
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -lcrypto
 
 # Pattern rule to compile .cpp files from 'src' into .o files in 'build/obj'
 # This rule handles all our main and library source files.

@@ -1,8 +1,8 @@
-#include "../../include/sbmpi/network/committee/committee.h"
+#include "sbmpi/network/committee/committee.h"
 
 #include <vector>
 
-#include "../../include/sbmpi/core/node.h"
+#include "sbmpi/core/node.h"
 #include "mpi.h"
 
 namespace sbmpi {

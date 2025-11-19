@@ -1,11 +1,11 @@
-#include "../../include/sbmpi/network/committee/final_committee.h"
+#include "sbmpi/network/committee/final_committee.h"
 
 #include <vector>
 
-#include "../../include/sbmpi/core/blocks/macro_block.h"
-#include "../../include/sbmpi/core/blocks/micro_block.h"
-#include "../../include/sbmpi/network/mpi_wrapper.h"
-#include "../../include/sbmpi/util/serialization.h"
+#include "sbmpi/core/blocks/macro_block.h"
+#include "sbmpi/core/blocks/micro_block.h"
+#include "sbmpi/network/mpi_wrapper.h"
+#include "sbmpi/util/serialization.h"
 #include "mpi.h"
 
 namespace sbmpi {

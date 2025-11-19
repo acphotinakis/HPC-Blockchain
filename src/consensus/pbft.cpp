@@ -6,6 +6,7 @@
 
 #include "../../include/sbmpi/consensus/pbft_messages.h"
 #include "../../include/sbmpi/network/mpi_wrapper.h"
+#include "../../include/sbmpi/util/crypto.h"
 
 namespace sbmpi
 {
@@ -75,8 +76,9 @@ namespace sbmpi
       // 1. Leader proposes a block
       if (myRank == leaderRank) {
         // In a real system, we'd get previous block hash from blockchain
+        std::string merkleRoot = util::merkle(transactions); // Calculate merkle root from the transactions
         block.header = core::blocks::BlockHeader(1, "genesis_hash_placeholder",
-                                                 "merkle_placeholder");
+                                                 merkleRoot);
         block.transactions = transactions;
         prePrepare(block);
       } else {

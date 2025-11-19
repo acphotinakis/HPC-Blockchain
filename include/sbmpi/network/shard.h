@@ -17,6 +17,7 @@ namespace sbmpi
       Shard(int id, MPI_Comm comm, int leaderRank);
       ~Shard();
       void addTransaction(const core::state::Transaction& tx);
+      MPI_Comm getCommunicator() const;
       core::blocks::MicroBlock runConsensus();
       int                      getId() const;
 

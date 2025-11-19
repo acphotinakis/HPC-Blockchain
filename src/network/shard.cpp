@@ -23,6 +23,11 @@ namespace sbmpi
       mempool.push_back(tx);
     }
 
+    MPI_Comm Shard::getCommunicator() const
+    {
+      return communicator;
+    }
+
     core::blocks::MicroBlock Shard::runConsensus()
     {
       // This is a placeholder. In a real implementation, this would involve

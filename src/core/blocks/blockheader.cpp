@@ -1,5 +1,5 @@
 #include "../../../include/sbmpi/core/blocks/blockheader.h"
-#include <openssl/sha.h>
+#include "../../../include/sbmpi/util/crypto.h"
 #include <chrono>
 #include <cstring>
 #include <iomanip>
@@ -68,12 +68,7 @@ namespace sbmpi
               << ts;
 
         const std::string data = input.str();
-
-        unsigned char digest[SHA256_DIGEST_LENGTH];
-        SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(),
-               digest);
-
-        return toHex(digest, SHA256_DIGEST_LENGTH);
+        return util::sha256(data);
       }
 
       // -------------------------------------------------------------

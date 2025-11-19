@@ -2,6 +2,7 @@
 #define SBMPI_LOGGING_H
 
 #include <sstream>
+#include <iostream>
 #include <string>
 
 namespace sbmpi
@@ -18,21 +19,31 @@ namespace sbmpi
 
     class Logger
     {
+      private:
+        Logger() = default;
+        static LogLevel loggerLevel;
+
      public:
-      static void setLevel(LogLevel level);
-      static void log(LogLevel level, const std::string& message);
+      static Logger& getLogger() 
+      {
+        static Logger instance;
+        return instance;
+      }
 
-     private:
-      static LogLevel currentLevel;
+      void setLevel(LogLevel level)
+      {
+          loggerLevel = level;
+      }
+
+      void log(LogLevel level, const std::string& message)
+      {
+        if (level <= loggerLevel) 
+        {
+            std::cout << message << std::endl;
+        }
+    }
     };
-
-#define LOG(level, message) \
-  do {                      \
-    std::stringstream ss;   \
-    ss << message;
-    Logger::log(level, ss.str());
-  }  // namespace util
-  while (0) }  // namespace sbmpi
+}  // namespace sbmpi
 }  // namespace sbmpi
 
 #endif  // SBMPI_LOGGING_H
