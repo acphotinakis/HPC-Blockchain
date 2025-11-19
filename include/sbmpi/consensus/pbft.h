@@ -38,8 +38,8 @@ namespace sbmpi
       int      maxFaultyNodes;
 
       void prePrepare(const core::blocks::MicroBlock& block);
-      void prepare();
-      void commit();
+      void prepare(const std::string& blockHash);
+      void commit(const std::string& blockHash);
       void broadcastMessage(const PBFTMessage& msg);
     };
 

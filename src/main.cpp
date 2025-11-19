@@ -1,3 +1,4 @@
+#include <string.h>
 #include <iostream>
 #include <memory>
 #include <numeric>
@@ -12,9 +13,10 @@
 #include "../include/sbmpi/network/shard.h"
 #include "../include/sbmpi/util/config.h"
 #include "../include/sbmpi/util/errors.h"
-#include "../include/sbmpi/util/generator.h"  // For mock data generation
+#include "../include/sbmpi/util/generator.h"
 #include "../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/util/metrics.h"
+#include "../include/sbmpi/util/serialization.h"
 #include "../include/sbmpi/util/timer.h"
 #include "mpi.h"
 
@@ -28,18 +30,6 @@ using namespace sbmpi::network::committee;
 
 /**
  * @brief Determines the role and group assignment for a specific MPI rank.
- *
- * This function implements the robust node allocation strategy to handle
- * remainders and ensure the Final Committee is correctly assigned.
- *
- * @param world_rank Current process's rank.
- * @param world_size Total number of processes.
- * @param numShards Number of parallel shards requested.
- * @param fc_size The size reserved for the Final Committee.
- * @param shardId_out Output: The color (shard ID) for MPI_Comm_split.
- * @param fcLeaderRank_out Output: The global rank of the Final Committee
- * Leader.
- * @return The determined NodeRole for the current rank.
  */
 NodeRole determineNodeAssignment(int world_rank, int world_size, int numShards,
                                  int fc_size, int& shardId_out,
@@ -95,7 +85,7 @@ NodeRole determineNodeAssignment(int world_rank, int world_size, int numShards,
     }
   }
 
-  // Unassigned (if allocation logic fails or rank is out of bounds)
+  // Unassigned
   shardId_out = MPI_UNDEFINED;
   return NodeRole::UNASSIGNED;
 }
@@ -110,14 +100,12 @@ int main(int argc, char** argv)
   int world_size;
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-  // Use unique_ptr for automatic memory management (Fix 4)
   std::unique_ptr<sbmpi::network::Shard>                     myShard = nullptr;
   std::unique_ptr<sbmpi::network::committee::FinalCommittee> finalCommittee =
       nullptr;
 
   // Logger setup
   sbmpi::util::Logger& logger = sbmpi::util::Logger::getLogger();
-  // Set the rank immediately
   logger.configure(world_rank);
 
   Config config;
@@ -127,13 +115,10 @@ int main(int argc, char** argv)
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
 
-  // Validate Allocation Parameters
   const int MIN_PROCESSES = config.numShards + FINAL_COMMITTEE_SIZE;
 
   if (world_size < MIN_PROCESSES) {
-    logger.fatal(ErrorCode::INVALID_ARGUMENTS,
-                 "Total nodes (%d) must be at least %d (Shards + FC Size).",
-                 world_size, MIN_PROCESSES);
+    logger.fatal(ErrorCode::INVALID_ARGUMENTS, "Not enough nodes.");
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
 
@@ -147,20 +132,15 @@ int main(int argc, char** argv)
   int shard_color;
   int fc_leader_global_rank;
 
-  // Determine identity based on rank
   NodeRole role = determineNodeAssignment(
       world_rank, world_size, config.numShards, FINAL_COMMITTEE_SIZE,
       shard_color, fc_leader_global_rank);
 
-  // CRITICAL FIX: All processes must call MPI_Comm_split unconditionally
-  // (Fix 1.1)
   MPI_Comm shard_comm = MPI_COMM_NULL;
   int      mpi_key    = (shard_color == MPI_UNDEFINED) ? 0 : world_rank;
 
-  // Split the world into private rooms based on 'shard_color'
   MPI_Comm_split(MPI_COMM_WORLD, shard_color, mpi_key, &shard_comm);
 
-  // Get new local rank within the private room
   int shard_rank = -1;
   int shard_size = 0;
   if (shard_comm != MPI_COMM_NULL) {
@@ -168,87 +148,112 @@ int main(int argc, char** argv)
     MPI_Comm_size(shard_comm, &shard_size);
   }
 
-  // Persist identity in Node object
-  Node myNode(world_rank, shard_rank, role, shard_comm);
+  Node myNode(world_rank);
+  myNode.setShardInfo(shard_color, shard_rank, role);
 
   // --- Phase 3: Object Instantiation ---
   if (role == NodeRole::SHARD_LEADER || role == NodeRole::SHARD_MEMBER) {
-    // Shard members get a Shard object
     myShard = std::make_unique<sbmpi::network::Shard>(
         myNode.getShardId(), shard_comm, fc_leader_global_rank);
 
   } else if (role == NodeRole::FINAL_COMMITTEE_MEMBER ||
              role == NodeRole::FINAL_COMMITTEE_MEMBER) {
-    // Final committee nodes get a FinalCommittee object
     finalCommittee =
-        std::make_unique<sbmpi::network::committee::FinalCommittee>(
-            shard_comm, config.numShards);
+        std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm);
   }
 
   logger.info("Assigned Role: " + std::to_string(static_cast<int>(role)) +
               ", Shard/FC Color: " + std::to_string(shard_color) +
               ", Local Rank: " + std::to_string(shard_rank));
 
-  // --- Phase 4: Transaction Generation and Distribution (Fix 3) ---
+  // --- Phase 4: Transaction Generation and Distribution ---
   sbmpi::util::Timer timer;
 
   if (world_rank == 0) {
-    // Only Rank 0 (Root/Client) generates and distributes transactions
     logger.info("Generating and distributing transactions...");
     timer.start();
 
-    // 1. Generate all transactions (Mock Data)
     std::vector<sbmpi::core::state::Transaction> all_transactions =
         sbmpi::util::generateMockTransactions(config.numTransactions);
 
-    // 2. Partition the transactions based on the number of shards
     std::vector<std::vector<sbmpi::core::state::Transaction>> partitioned_txs(
         config.numShards);
     for (const auto& tx : all_transactions) {
-      // Deterministic partitioning: ID % Shards
-      int shardId = tx.id % config.numShards;
+      // Use std::stoull to parse ID (safer than stoi if IDs get large)
+      // Fallback to 0 if ID parsing fails (though generator makes safe IDs)
+      uint64_t txIdVal = 0;
+      try {
+        txIdVal = std::stoull(tx.id);
+      } catch (...) {
+      }
+
+      int shardId = txIdVal % config.numShards;
       partitioned_txs[shardId].push_back(tx);
     }
 
-    // 3. Send transaction sets to the respective Shard Leaders
     for (int shardId = 0; shardId < config.numShards; ++shardId) {
-      // Calculate the global rank of the Shard Leader
-      // Note: This relies on the 'determineNodeAssignment' logic
-      int shardLeaderGlobalRank =
-          FINAL_COMMITTEE_SIZE +
-          (shardId * (world_size - FINAL_COMMITTEE_SIZE) / config.numShards);
+      // Calculate global rank of Shard Leader
+      // Logic: FC takes first N slots. Remaining slots are shards.
+      // Shard Pool Size = World - FC.
+      // We must replicate logic from determineNodeAssignment to identify leader
+      // rank. Simplified calculation:
+      int shardPoolSize     = world_size - FINAL_COMMITTEE_SIZE;
+      int nodesPerShardBase = shardPoolSize / config.numShards;
+      int remainder         = shardPoolSize % config.numShards;
+
+      int offset = FINAL_COMMITTEE_SIZE;  // Start after FC
+      for (int k = 0; k < shardId; ++k) {
+        offset += nodesPerShardBase + (k < remainder ? 1 : 0);
+      }
+      int shardLeaderGlobalRank = offset;  // The first node in the shard block
 
       if (partitioned_txs[shardId].empty()) continue;
 
-      // Send using MPIWrapper
-      sbmpi::network::send(partitioned_txs[shardId], shardLeaderGlobalRank, 0,
-                           MPI_COMM_WORLD);
+      std::vector<char> buffer;
+      auto&             tx_list = partitioned_txs[shardId];
+      pack(static_cast<int>(tx_list.size()), buffer);
+      for (const auto& tx : tx_list) {
+        std::vector<char> tx_data = tx.serialize();
+        pack(static_cast<int>(tx_data.size()), buffer);
+        buffer.insert(buffer.end(), tx_data.begin(), tx_data.end());
+      }
+
+      sbmpi::network::send(buffer, shardLeaderGlobalRank, 0, MPI_COMM_WORLD);
       logger.debug("Sent " + std::to_string(partitioned_txs[shardId].size()) +
-                   " transactions to Shard Leader at rank " +
-                   std::to_string(shardLeaderGlobalRank));
+                   " txs to Leader " + std::to_string(shardLeaderGlobalRank));
     }
   }
 
   // --- Phase 5: Parallel Execution ---
 
   if (myShard) {
-    // Shards run PBFT consensus and send MicroBlock to FC Leader (Rank 0)
-    // Shard::runConsensus() must implement the logic to receive its
-    // transactions first.
+    // This will now internally recv transactions (if leader), run PBFT, and
+    // send result
     myShard->runConsensus();
   }
 
   if (finalCommittee) {
-    // Final committee collects, assembles, and commits
+    // FIX: Calculate the global ranks of all shard leaders so FC knows who to
+    // listen to
+    std::vector<int> shardLeaderRanks;
+    int              shardPoolSize     = world_size - FINAL_COMMITTEE_SIZE;
+    int              nodesPerShardBase = shardPoolSize / config.numShards;
+    int              remainder         = shardPoolSize % config.numShards;
+    int              offset            = FINAL_COMMITTEE_SIZE;
+
+    for (int i = 0; i < config.numShards; ++i) {
+      shardLeaderRanks.push_back(offset);
+      offset += nodesPerShardBase + (i < remainder ? 1 : 0);
+    }
+
+    // Pass the calculated ranks to collectMicroBlocks
     std::vector<sbmpi::core::blocks::MicroBlock> collectedMicroBlocks =
-        finalCommittee->collectMicroBlocks(
-            config.numShards);  // Collects from N shards
+        finalCommittee->collectMicroBlocks(shardLeaderRanks);
 
     if (myNode.getRole() == NodeRole::FINAL_COMMITTEE_MEMBER) {
       sbmpi::core::blocks::MacroBlock macroBlock =
           finalCommittee->assembleMacroBlock(collectedMicroBlocks);
 
-      // Add block to the chain
       sbmpi::core::Blockchain blockchain;
       blockchain.addBlock(
           std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
@@ -257,7 +262,6 @@ int main(int argc, char** argv)
   }
 
   // --- Phase 6: Finalization ---
-  // Only Rank 0 handles the final timing and metrics
   if (world_rank == 0) {
     timer.stop();
     double elapsed_time = timer.elapsedSeconds();
@@ -268,7 +272,6 @@ int main(int argc, char** argv)
                 " seconds.");
   }
 
-  // Clean up the shard communicator
   if (shard_comm != MPI_COMM_NULL && shard_comm != MPI_COMM_WORLD) {
     MPI_Comm_free(&shard_comm);
   }

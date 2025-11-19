@@ -2,6 +2,7 @@
 #define SBMPI_LOGGING_H
 
 #include <string>
+#include <cstdio> // Required for snprintf
 #include "sbmpi/util/errors.h"
 
 namespace sbmpi
@@ -63,7 +64,20 @@ namespace sbmpi
       void info(const std::string& message);
       void error(const std::string& message);
       void debug(const std::string& message);
+
+      // Non-variadic fatal method (existing)
       void fatal(ErrorCode errorCode, const std::string& message);
+
+      // Variadic template fatal method for printf-style formatting
+      template <typename... Args>
+      void fatal(ErrorCode errorCode, const char* format, Args... args) {
+          // Use a fixed-size buffer to format the message.
+          // A more robust solution for production might involve dynamic allocation
+          // or C++20's std::format.
+          char buffer[1024]; // Max 1023 characters + null terminator
+          snprintf(buffer, sizeof(buffer), format, args...);
+          this->fatal(errorCode, std::string(buffer)); // Call the non-variadic fatal
+      }
     };
 
   }  // namespace util

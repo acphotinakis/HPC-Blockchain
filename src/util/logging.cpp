@@ -73,6 +73,9 @@ namespace sbmpi
     void Logger::fatal(ErrorCode code, const std::string& message)
     {
       log(LogLevel::FATAL, message);
+      // CRITICAL: Also call the global fatal function to terminate the program.
+      // The global fatal function is responsible for printing to stderr and exiting.
+      sbmpi::util::fatal(code, message);
     }
 
   }  // namespace util
