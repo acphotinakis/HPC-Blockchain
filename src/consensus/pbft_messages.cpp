@@ -1,7 +1,5 @@
 #include "../../include/sbmpi/consensus/pbft_messages.h"
-
 #include <vector>
-
 #include "../../include/sbmpi/util/serialization.h"
 
 namespace sbmpi

@@ -2,16 +2,16 @@
 #include <memory>
 #include <vector>
 
-#include "../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/consensus/pbft.h"
 #include "../include/sbmpi/core/blockchain.h"
 #include "../include/sbmpi/core/node.h"
 #include "../include/sbmpi/core/state/transaction.h"
 #include "../include/sbmpi/network/committee/final_committee.h"
-#include "../include/sbmpi/network/shard.h"
 #include "../include/sbmpi/network/mpi_wrapper.h"
+#include "../include/sbmpi/network/shard.h"
 #include "../include/sbmpi/util/config.h"
 #include "../include/sbmpi/util/errors.h"
+#include "../include/sbmpi/util/logging.h"
 #include "../include/sbmpi/util/metrics.h"
 #include "../include/sbmpi/util/timer.h"
 #include "mpi.h"
@@ -75,10 +75,9 @@ int main(int argc, char** argv)
     myShard = new sbmpi::network::Shard(shardId, shard_comm, leaderRank);
 
     logger.log(sbmpi::util::LogLevel::INFO,
-                             "Node " + std::to_string(world_rank) +
-                                 " is shard member of shard " +
-                                 std::to_string(shardId) + " with rank " +
-                                 std::to_string(shardRank));
+               "Node " + std::to_string(world_rank) +
+                   " is shard member of shard " + std::to_string(shardId) +
+                   " with rank " + std::to_string(shardRank));
 
   } else if (world_rank ==
              world_size - 1) {  // Last node is final committee leader
@@ -102,9 +101,7 @@ int main(int argc, char** argv)
     for (int i = 0; i < config.numTransactions / world_size; ++i) {
       sbmpi::core::state::Transaction tx(
           "sender_" + std::to_string(world_rank),
-          "receiver_" + std::to_string(world_rank), 
-          1.0
-        );
+          "receiver_" + std::to_string(world_rank), 1.0);
       tx.sign("private_key_" + std::to_string(world_rank));
       transactions.push_back(tx);
       myShard->addTransaction(tx);
@@ -131,7 +128,7 @@ int main(int argc, char** argv)
     blockchain.addBlock(
         std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
     logger.log(sbmpi::util::LogLevel::INFO,
-                             "MacroBlock assembled and added to blockchain.");
+               "MacroBlock assembled and added to blockchain.");
   }
 
   timer.stop();

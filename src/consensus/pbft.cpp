@@ -76,7 +76,8 @@ namespace sbmpi
       // 1. Leader proposes a block
       if (myRank == leaderRank) {
         // In a real system, we'd get previous block hash from blockchain
-        std::string merkleRoot = util::merkle(transactions); // Calculate merkle root from the transactions
+        std::string merkleRoot = util::merkle(
+            transactions);  // Calculate merkle root from the transactions
         block.header = core::blocks::BlockHeader(1, "genesis_hash_placeholder",
                                                  merkleRoot);
         block.transactions = transactions;
