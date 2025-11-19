@@ -8,6 +8,7 @@
 namespace sbmpi {
 namespace util {
 
+std::string logCryptoError(const std::string& errorMessage);
 std::string sha256(const std::string& data);
 std::string sign(const std::string& data, const std::string& privateKey);
 bool verify(const std::string& data, const std::string& signature,

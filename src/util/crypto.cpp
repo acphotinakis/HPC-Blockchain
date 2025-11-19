@@ -1,11 +1,13 @@
 #include "../../include/sbmpi/util/crypto.h"
 #include "../../include/sbmpi/core/state/transaction.h"
-#include <openssl/sha.h>
+#include "../../include/sbmpi/util/logging.h"
+#include <openssl/evp.h>
 #include <vector>
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
 #include <string>
+#include <charconv>
 #include <iostream>
 
 namespace sbmpi
@@ -13,18 +15,42 @@ namespace sbmpi
   namespace util
   {
 
-    std::string sha256(const std::string& data)
+    std::string logCryptoError(const std::string& errorMessage)
     {
-      unsigned char hash[SHA256_DIGEST_LENGTH];
-      SHA256_CTX    sha256;
-      SHA256_Init(&sha256);
-      SHA256_Update(&sha256, data.c_str(), data.size());
-      SHA256_Final(hash, &sha256);
-      std::stringstream ss;
-      for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-      }
-      return ss.str();
+      auto& logger = util::Logger::getLogger();
+      logger.log(util::LogLevel::ERROR, errorMessage);
+      return "";
+    }
+
+    std::string sha256(const std::string& message)
+    {
+        EVP_MD_CTX *context = EVP_MD_CTX_new();
+        if (!context)
+            return logCryptoError("Error initializing EVP context!");
+
+        if (EVP_DigestInit_ex(context, EVP_sha256(), NULL) != 1)
+            return logCryptoError("Error initializing SHA256 digest!");
+
+        if (EVP_DigestUpdate(context, message.data(), message.size()) != 1)
+            return logCryptoError("Error updating SHA256 digest!");
+
+        unsigned char *digest = (unsigned char*)OPENSSL_malloc(EVP_MD_size(EVP_sha256()));
+        if (!digest)
+            return logCryptoError("Error allocating digest buffer!");
+
+        unsigned int digest_len = 0;
+        if (EVP_DigestFinal_ex(context, digest, &digest_len) != 1)
+            return logCryptoError("Error producing SHA256 final digest!");
+
+        EVP_MD_CTX_free(context);
+
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0'); // Define stream as hex and fill any spaces with zeroes
+        for (unsigned int i = 0; i < digest_len; i++)
+            ss << std::setw(2) << (int)digest[i]; // Need std::setw(2) to define a hex number with format XX
+
+        OPENSSL_free(digest);
+        return ss.str();
     }
 
     std::string sign(const std::string& data, const std::string& privateKey)
