@@ -8,6 +8,9 @@
 *.swp
 
 
+build/
+.cache/
+
 .venv/
 
 # DEVELOPMENT
