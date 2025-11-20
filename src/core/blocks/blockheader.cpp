@@ -1,3 +1,7 @@
+/**
+ * @file blockheader.cpp
+ * @brief Implements the BlockHeader class for blockchain blocks.
+ */
 #include "../../../include/sbmpi/core/blocks/blockheader.h"
 #include "../../../include/sbmpi/util/crypto.h"
 #include <chrono>
@@ -15,9 +19,12 @@ namespace sbmpi
     namespace blocks
     {
 
-      // -------------------------------------------------------------
-      // Utility: convert bytes to hex string
-      // -------------------------------------------------------------
+      /**
+       * @brief Converts a byte array to its hexadecimal string representation.
+       * @param data Pointer to the unsigned char array.
+       * @param len The length of the byte array.
+       * @return A std::string containing the hexadecimal representation.
+       */
       static std::string toHex(const unsigned char* data, std::size_t len)
       {
         std::ostringstream oss;
@@ -29,9 +36,11 @@ namespace sbmpi
         return oss.str();
       }
 
-      // -------------------------------------------------------------
-      // Default constructor
-      // -------------------------------------------------------------
+      /**
+       * @brief Default constructor for BlockHeader.
+       * Initializes height to 0, previousHash and merkleRoot to empty strings,
+       * and timestamp to the current system time.
+       */
       BlockHeader::BlockHeader()
           : height(0),
             previousHash(""),
@@ -40,9 +49,12 @@ namespace sbmpi
       {
       }
 
-      // -------------------------------------------------------------
-      // Main constructor
-      // -------------------------------------------------------------
+      /**
+       * @brief Main constructor for BlockHeader.
+       * @param height_ The height of the block in the blockchain.
+       * @param previousHash_ The hash of the previous block.
+       * @param merkleRoot_ The Merkle root of all transactions in the block.
+       */
       BlockHeader::BlockHeader(int height_, const std::string& previousHash_,
                                const std::string& merkleRoot_)
           : height(height_),
@@ -52,9 +64,14 @@ namespace sbmpi
       {
       }
 
-      // -------------------------------------------------------------
-      // Cryptographic Hash (SHA-256)
-      // -------------------------------------------------------------
+      /**
+       * @brief Calculates the SHA-256 cryptographic hash of the block header.
+       *
+       * The hash is computed by concatenating the block's height, previous hash,
+       * Merkle root, and timestamp (in milliseconds) into a single string and
+       * then applying SHA-256.
+       * @return A std::string representing the SHA-256 hash of the block header.
+       */
       std::string BlockHeader::hash() const
       {
         // Convert timestamp → integer (portable)
@@ -71,14 +88,16 @@ namespace sbmpi
         return util::sha256(data);
       }
 
-      // -------------------------------------------------------------
-      // Serialization
-      // Format:
-      //   [height:int32]
-      //   [timestamp:int64 ms]
-      //   [prevHashLen:int32][prevHash bytes]
-      //   [merkleLen:int32][merkle bytes]
-      // -------------------------------------------------------------
+      /**
+       * @brief Serializes the BlockHeader into a vector of characters.
+       *
+       * The format is:
+       *   [height:int32]
+       *   [timestamp:int64 ms]
+       *   [prevHashLen:int32][prevHash bytes]
+       *   [merkleLen:int32][merkle bytes]
+       * @return A std::vector<char> containing the serialized block header data.
+       */
       std::vector<char> BlockHeader::serialize() const
       {
         std::vector<char> buffer;
@@ -113,9 +132,13 @@ namespace sbmpi
         return buffer;
       }
 
-      // -------------------------------------------------------------
-      // Deserialization
-      // -------------------------------------------------------------
+      /**
+       * @brief Deserializes a vector of characters into a BlockHeader object.
+       *
+       * Reconstructs the BlockHeader from its serialized byte representation.
+       * Throws std::runtime_error if the buffer is too small or data is malformed.
+       * @param data The std::vector<char> containing the serialized block header data.
+       */
       void BlockHeader::deserialize(const std::vector<char>& data)
       {
         if (data.size() < 4 + 8) {
@@ -161,6 +184,6 @@ namespace sbmpi
             std::chrono::milliseconds(tsMillis));
       }
 
-    }  // namespace blocks
-  }  // namespace core
-}  // namespace sbmpi
+    } // namespace blocks
+  } // namespace core
+} // namespace sbmpi

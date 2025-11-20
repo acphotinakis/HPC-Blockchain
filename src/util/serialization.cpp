@@ -1,3 +1,10 @@
+/**
+ * @file serialization.cpp
+ * @brief Provides utility functions for serializing and deserializing primitive types and strings into a byte buffer.
+ *
+ * These functions are essential for converting structured data into a format
+ * suitable for network transmission or storage, and for reconstructing it back.
+ */
 #include "../../include/sbmpi/util/serialization.h"
 #include <cstring>
 
@@ -6,18 +13,35 @@ namespace sbmpi
   namespace util
   {
 
+    /**
+     * @brief Packs an integer value into a character vector buffer.
+     * @param value The integer to pack.
+     * @param buffer The std::vector<char> buffer to append the packed integer to.
+     */
     void pack(int value, std::vector<char>& buffer)
     {
       const char* bytes = reinterpret_cast<const char*>(&value);
       buffer.insert(buffer.end(), bytes, bytes + sizeof(int));
     }
 
+    /**
+     * @brief Packs a double-precision floating-point value into a character vector buffer.
+     * @param value The double to pack.
+     * @param buffer The std::vector<char> buffer to append the packed double to.
+     */
     void pack(double value, std::vector<char>& buffer)
     {
       const char* bytes = reinterpret_cast<const char*>(&value);
       buffer.insert(buffer.end(), bytes, bytes + sizeof(double));
     }
 
+    /**
+     * @brief Packs a string value into a character vector buffer.
+     *
+     * The string's length is packed first as an integer, followed by the string's characters.
+     * @param value The string to pack.
+     * @param buffer The std::vector<char> buffer to append the packed string to.
+     */
     void pack(const std::string& value, std::vector<char>& buffer)
     {
       int len = value.length();
@@ -25,6 +49,12 @@ namespace sbmpi
       buffer.insert(buffer.end(), value.begin(), value.end());
     }
 
+    /**
+     * @brief Unpacks an integer value from a character vector buffer.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked integer value.
+     */
     int unpack_int(const std::vector<char>& buffer, int& offset)
     {
       int value;
@@ -33,6 +63,12 @@ namespace sbmpi
       return value;
     }
 
+    /**
+     * @brief Unpacks a double-precision floating-point value from a character vector buffer.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked double value.
+     */
     double unpack_double(const std::vector<char>& buffer, int& offset)
     {
       double value;
@@ -41,13 +77,21 @@ namespace sbmpi
       return value;
     }
 
+    /**
+     * @brief Unpacks a string value from a character vector buffer.
+     *
+     * Reads the string's length first, then extracts the characters.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked string value.
+     */
     std::string unpack_string(const std::vector<char>& buffer, int& offset)
     {
-      int         len = unpack_int(buffer, offset);
+      int len = unpack_int(buffer, offset);
       std::string value(buffer.data() + offset, len);
       offset += len;
       return value;
     }
 
-  }  // namespace util
-}  // namespace sbmpi
+  } // namespace util
+} // namespace sbmpi

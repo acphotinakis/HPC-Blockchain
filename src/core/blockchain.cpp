@@ -1,3 +1,7 @@
+/**
+ * @file blockchain.cpp
+ * @brief Implements the Blockchain class for managing a chain of blocks.
+ */
 #include "../../include/sbmpi/core/blockchain.h"
 
 #include <memory>
@@ -10,16 +14,34 @@ namespace sbmpi
   namespace core
   {
 
+    /**
+     * @brief Represents a blockchain, managing a sequence of blocks.
+     *
+     * This class provides functionality to add blocks, retrieve blocks by height,
+     * get the latest block, and validate the integrity of the chain.
+     */
     Blockchain::Blockchain()
     {
       createGenesisBlock();
     }
 
+    /**
+     * @brief Creates and adds the genesis block to the blockchain.
+     *
+     * This is typically the first block in the chain, with predefined properties.
+     */
     void Blockchain::createGenesisBlock()
     {
       chain.push_back(state::createGenesisBlock());
     }
 
+    /**
+     * @brief Adds a new block to the blockchain after basic validation.
+     *
+     * The block is added only if its previous hash matches the latest block's hash
+     * and its height is one greater than the latest block's height.
+     * @param block A unique pointer to the block to be added.
+     */
     void Blockchain::addBlock(std::unique_ptr<blocks::Block> block)
     {
       if (block) {
@@ -32,6 +54,11 @@ namespace sbmpi
       }
     }
 
+    /**
+     * @brief Retrieves a block from the blockchain by its height.
+     * @param height The height (index) of the block to retrieve.
+     * @return A pointer to the Block if found, nullptr otherwise.
+     */
     const blocks::Block* Blockchain::getBlock(int height) const
     {
       if (height >= 0 && height < chain.size()) {
@@ -40,6 +67,10 @@ namespace sbmpi
       return nullptr;
     }
 
+    /**
+     * @brief Retrieves the latest block in the blockchain.
+     * @return A pointer to the latest Block if the chain is not empty, nullptr otherwise.
+     */
     const blocks::Block* Blockchain::getLatestBlock() const
     {
       if (chain.empty()) {
@@ -48,13 +79,20 @@ namespace sbmpi
       return chain.back().get();
     }
 
+    /**
+     * @brief Validates the integrity of the blockchain.
+     *
+     * Checks if each block's previous hash matches the hash of the preceding block
+     * and if block heights are sequential.
+     * @return True if the blockchain is valid, false otherwise.
+     */
     bool Blockchain::validate() const
     {
       if (chain.size() <= 1) {
         return true;
       }
       for (size_t i = 1; i < chain.size(); ++i) {
-        const auto& current  = chain[i];
+        const auto& current = chain[i];
         const auto& previous = chain[i - 1];
         if (current->header.previousHash != previous->getHash()) {
           return false;
@@ -66,10 +104,14 @@ namespace sbmpi
       return true;
     }
 
+    /**
+     * @brief Returns the current height of the blockchain.
+     * @return The height of the latest block (0-indexed), or -1 if the chain is empty.
+     */
     int Blockchain::getHeight() const
     {
       return chain.empty() ? -1 : static_cast<int>(chain.size()) - 1;
     }
 
-  }  // namespace core
-}  // namespace sbmpi
+  } // namespace core
+} // namespace sbmpi

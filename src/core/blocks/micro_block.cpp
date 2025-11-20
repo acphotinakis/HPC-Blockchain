@@ -1,3 +1,7 @@
+/**
+ * @file micro_block.cpp
+ * @brief Implements the MicroBlock class, representing a block within a single shard.
+ */
 #include "../../../include/sbmpi/core/blocks/micro_block.h"
 
 #include <vector>
@@ -11,15 +15,36 @@ namespace sbmpi
     namespace blocks
     {
 
+      /**
+       * @brief Represents a MicroBlock, a block specific to a single shard.
+       *
+       * MicroBlocks contain transactions processed within a particular shard
+       * and are eventually aggregated into MacroBlocks by the Final Committee.
+       */
       MicroBlock::MicroBlock() : shardId(0) {}
 
+      /**
+       * @brief Constructs a MicroBlock with a specified shard ID.
+       * @param shardId The identifier of the shard this MicroBlock belongs to.
+       */
       MicroBlock::MicroBlock(int shardId) : shardId(shardId) {}
 
+      /**
+       * @brief Returns the type name of the block.
+       * @return A std::string indicating the block type, "MicroBlock".
+       */
       std::string MicroBlock::getType() const
       {
         return "MicroBlock";
       }
 
+      /**
+       * @brief Serializes the MicroBlock into a vector of characters.
+       *
+       * The serialization includes the block header, the shard ID, and all
+       * transactions contained within this MicroBlock.
+       * @return A std::vector<char> containing the serialized MicroBlock data.
+       */
       std::vector<char> MicroBlock::serialize() const
       {
         std::vector<char> buffer;
@@ -40,11 +65,18 @@ namespace sbmpi
         return buffer;
       }
 
+      /**
+       * @brief Deserializes a vector of characters into a MicroBlock object.
+       *
+       * Reconstructs the MicroBlock from its serialized byte representation,
+       * including its header, shard ID, and transactions.
+       * @param data The std::vector<char> containing the serialized MicroBlock data.
+       */
       void MicroBlock::deserialize(const std::vector<char>& data)
       {
         int offset = 0;
 
-        int               headerSize = util::unpack_int(data, offset);
+        int headerSize = util::unpack_int(data, offset);
         std::vector<char> headerVec(data.begin() + offset,
                                     data.begin() + offset + headerSize);
         header.deserialize(headerVec);
@@ -55,8 +87,8 @@ namespace sbmpi
         transactions.clear();
         int numTransactions = util::unpack_int(data, offset);
         for (int i = 0; i < numTransactions; ++i) {
-          int                txSize = util::unpack_int(data, offset);
-          std::vector<char>  txData(data.begin() + offset,
+          int txSize = util::unpack_int(data, offset);
+          std::vector<char> txData(data.begin() + offset,
                                     data.begin() + offset + txSize);
           state::Transaction tx;
           tx.deserialize(txData);
@@ -65,6 +97,6 @@ namespace sbmpi
         }
       }
 
-    }  // namespace blocks
-  }  // namespace core
-}  // namespace sbmpi
+    } // namespace blocks
+  } // namespace core
+} // namespace sbmpi

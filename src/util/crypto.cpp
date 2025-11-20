@@ -1,3 +1,11 @@
+/**
+ * @file crypto.cpp
+ * @brief Provides cryptographic utility functions for hashing, signing, and verifying.
+ *
+ * This file implements SHA-256 hashing using OpenSSL, and dummy implementations
+ * for digital signing and verification for simulation purposes. It also includes
+ * a Merkle tree root calculation function.
+ */
 #include "../../include/sbmpi/util/crypto.h"
 #include <openssl/evp.h>  // Use EVP header instead of sha.h
 #include <iomanip>
@@ -13,6 +21,11 @@ namespace sbmpi
   namespace util
   {
 
+    /**
+     * @brief Computes the SHA-256 hash of a given string.
+     * @param data The input string to be hashed.
+     * @return A std::string representing the hexadecimal SHA-256 hash.
+     */
     std::string sha256(const std::string& data)
     {
       unsigned char hash[EVP_MAX_MD_SIZE];
@@ -36,16 +49,37 @@ namespace sbmpi
       return ss.str();
     }
 
+    /**
+     * @brief Generates a dummy digital signature for given data using a private key.
+     *
+     * For simulation purposes, the signature is simply the SHA-256 hash of
+     * the concatenated data and private key. In a real system, this would
+     * involve asymmetric cryptography.
+     * @param data The data to be signed.
+     * @param privateKey The private key used for signing.
+     * @return A std::string representing the dummy signature.
+     */
     std::string sign(const std::string& data, const std::string& privateKey)
     {
       // Dummy implementation: Signature = SHA256(Data + PrivateKey)
       return sha256(data + privateKey);
     }
 
+    /**
+     * @brief Verifies a dummy digital signature against data and a public key.
+     *
+     * For simulation purposes, this checks if the provided signature matches
+     * the SHA-256 hash of the data concatenated with a reconstructed "private key"
+     * based on the public key (as used by the mock generator).
+     * @param data The original data that was signed.
+     * @param signature The signature to verify.
+     * @param publicKey The public key (in this simulation, the sender's address).
+     * @return True if the signature is valid, false otherwise.
+     */
     bool verify(const std::string& data, const std::string& signature,
                 const std::string& publicKey)
     {
-      //  Align verification with the generator's signing logic.
+      // Align verification with the generator's signing logic.
       // The generator signs with "private_key_" + sender.
       // The transaction passes 'sender' (the address) as 'publicKey'.
       // So to verify, we must reconstruct the signing key used by the mock
@@ -61,9 +95,14 @@ namespace sbmpi
 
     /**
      * @brief Calculates the Merkle root hash given a vector of 'Transactions'.
+     *
+     * This function constructs a Merkle tree from the transaction IDs (hashes)
+     * and returns the root hash. If the number of transactions is odd, the last
+     * hash is duplicated at each level.
      * @param transactions A reference to a std::vector containing
-     * core::state:Transaction instances.
-     * @return A std::string representation of the calculate Merkle root.
+     * core::state::Transaction instances.
+     * @return A std::string representation of the calculated Merkle root, or an
+     *         empty string if the input vector is empty.
      */
     std::string merkle(
         const std::vector<core::state::Transaction>& transactions)
@@ -105,5 +144,5 @@ namespace sbmpi
       return currentTransactions[0];
     }
 
-  }  // namespace util
-}  // namespace sbmpi
+  } // namespace util
+} // namespace sbmpi

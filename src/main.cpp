@@ -1,3 +1,12 @@
+/**
+ * @file main.cpp
+ * @brief Main entry point for the parallelized blockchain computations simulation.
+ *
+ * This program simulates a sharded blockchain network using MPI. It initializes
+ * MPI, assigns roles to nodes (Final Committee, Shard Leaders, Shard Members),
+ * distributes transactions, runs a PBFT consensus protocol within each shard,
+ * and aggregates microblocks into macroblocks.
+ */
 #include <string.h>
 #include <iostream>
 #include <memory>
@@ -30,6 +39,19 @@ using namespace sbmpi::network::committee;
 
 /**
  * @brief Determines the role and group assignment for a specific MPI rank.
+ *
+ * This function partitions the total MPI processes into a Final Committee (FC)
+ * and multiple shards. The first `fc_size` ranks are reserved for the FC.
+ * The remaining ranks are distributed among the shards, with the first rank
+ * in each shard group designated as the Shard Leader.
+ *
+ * @param world_rank The global MPI rank of the current process.
+ * @param world_size The total number of MPI processes.
+ * @param numShards The desired number of shards.
+ * @param fc_size The fixed size of the Final Committee.
+ * @param shardId_out Output parameter: The assigned shard ID (or unique ID for FC).
+ * @param fcLeaderRank_out Output parameter: The global rank of the FC leader.
+ * @return The assigned NodeRole for the current process.
  */
 NodeRole determineNodeAssignment(int world_rank, int world_size, int numShards,
                                  int fc_size, int& shardId_out,
@@ -90,6 +112,17 @@ NodeRole determineNodeAssignment(int world_rank, int world_size, int numShards,
   return NodeRole::UNASSIGNED;
 }
 
+/**
+ * @brief Main function for the blockchain simulation.
+ *
+ * Orchestrates the entire simulation process, including MPI initialization,
+ * node role assignment, transaction generation and distribution, parallel
+ * execution of shard consensus, and final aggregation by the Final Committee.
+ *
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line argument strings.
+ * @return 0 if the simulation completes successfully, 1 otherwise.
+ */
 int main(int argc, char** argv)
 {
   // --- Phase 1: MPI Initialization and Setup ---
@@ -129,6 +162,8 @@ int main(int argc, char** argv)
   }
 
   // --- Phase 2: Node Assignment and Communicator Split ---
+  // Each node determines its role (Shard Leader, Shard Member, FC Member)
+  // and its shard ID (or FC ID). MPI communicators are split based on these IDs.
   int shard_color;
   int fc_leader_global_rank;
 
@@ -152,12 +187,14 @@ int main(int argc, char** argv)
   myNode.setShardInfo(shard_color, shard_rank, role);
 
   // --- Phase 3: Object Instantiation ---
+  // Based on the assigned role, each node instantiates either a Shard object
+  // (for shard members/leaders) or a FinalCommittee object (for FC members).
   if (role == NodeRole::SHARD_LEADER || role == NodeRole::SHARD_MEMBER) {
     myShard = std::make_unique<sbmpi::network::Shard>(
         myNode.getShardId(), shard_comm, fc_leader_global_rank);
 
   } else if (role == NodeRole::FINAL_COMMITTEE_MEMBER ||
-             role == NodeRole::FINAL_COMMITTEE_MEMBER) {
+             role == NodeRole::FINAL_COMMITTEE_MEMBER) { // Note: This condition is redundant, but kept as is.
     finalCommittee =
         std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm);
   }
@@ -167,6 +204,8 @@ int main(int argc, char** argv)
               ", Local Rank: " + std::to_string(shard_rank));
 
   // --- Phase 4: Transaction Generation and Distribution ---
+  // The root process (world_rank 0) generates mock transactions and distributes
+  // them to the respective Shard Leaders.
   sbmpi::util::Timer timer;
 
   if (world_rank == 0) {
@@ -225,7 +264,8 @@ int main(int argc, char** argv)
   }
 
   // --- Phase 5: Parallel Execution ---
-
+  // Shard nodes run their local PBFT consensus to produce microblocks.
+  // Final Committee members collect these microblocks and assemble a macroblock.
   if (myShard) {
     // This will now internally recv transactions (if leader), run PBFT, and
     // send result
@@ -262,6 +302,7 @@ int main(int argc, char** argv)
   }
 
   // --- Phase 6: Finalization ---
+  // The root process records simulation metrics and cleans up MPI resources.
   if (world_rank == 0) {
     timer.stop();
     double elapsed_time = timer.elapsedSeconds();

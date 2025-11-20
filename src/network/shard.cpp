@@ -1,3 +1,7 @@
+/**
+ * @file shard.cpp
+ * @brief Implements the Shard class, representing a single shard in the blockchain network.
+ */
 #include "../../include/sbmpi/network/shard.h"
 
 #include <iostream>
@@ -16,25 +20,49 @@ namespace sbmpi
   namespace network
   {
 
-    // leaderRank here refers to the Global Rank of the Final Committee Leader
-    // (for sending results)
+    /**
+     * @brief Represents a single shard in the sharded blockchain network.
+     *
+     * Each shard manages its own set of transactions, runs a PBFT consensus
+     * protocol to produce microblocks, and reports these microblocks to the
+     * Final Committee.
+     */
     Shard::Shard(int id, MPI_Comm comm, int leaderRank)
         : id(id), communicator(comm), leaderRank(leaderRank)
     {
     }
 
+    /**
+     * @brief Destructor for the Shard class.
+     */
     Shard::~Shard() {}
 
+    /**
+     * @brief Adds a transaction to the shard's local mempool.
+     * @param tx The transaction to add.
+     */
     void Shard::addTransaction(const core::state::Transaction& tx)
     {
       mempool.push_back(tx);
     }
 
+    /**
+     * @brief Returns the MPI communicator associated with this shard.
+     * @return The MPI_Comm object for the shard.
+     */
     MPI_Comm Shard::getCommunicator() const
     {
       return communicator;
     }
 
+    /**
+     * @brief Runs the PBFT consensus protocol within the shard.
+     *
+     * This method orchestrates the ingestion of transactions (for the shard leader),
+     * the execution of the PBFT algorithm to agree on a microblock, and the
+     * reporting of the finalized microblock to the Final Committee (by the shard leader).
+     * @return The MicroBlock that has been agreed upon by the shard.
+     */
     core::blocks::MicroBlock Shard::runConsensus()
     {
       int my_shard_rank;
@@ -52,7 +80,7 @@ namespace sbmpi
         std::vector<char> buffer = network::recv(0, 0, MPI_COMM_WORLD);
 
         int offset = 0;
-        int numTx  = util::unpack_int(buffer, offset);
+        int numTx = util::unpack_int(buffer, offset);
 
         mempool.clear();
         util::Logger::getLogger().info(
@@ -60,8 +88,8 @@ namespace sbmpi
             std::to_string(numTx) + " transactions.");
 
         for (int i = 0; i < numTx; ++i) {
-          int                      txSize = util::unpack_int(buffer, offset);
-          std::vector<char>        txData(buffer.begin() + offset,
+          int txSize = util::unpack_int(buffer, offset);
+          std::vector<char> txData(buffer.begin() + offset,
                                           buffer.begin() + offset + txSize);
           core::state::Transaction tx;
           tx.deserialize(txData);
@@ -99,7 +127,7 @@ namespace sbmpi
       util::Logger::getLogger().info("Shard " + std::to_string(id) +
                                      ": Starting PBFT consensus.");
 
-      //  Pass previousBlockHash to run()
+      // Pass previousBlockHash to run()
       core::blocks::MicroBlock microBlock =
           pbft.run(mempool, previousBlockHash);
       microBlock.shardId = id;  // Ensure block is tagged with our ID
@@ -126,10 +154,14 @@ namespace sbmpi
       return microBlock;
     }
 
+    /**
+     * @brief Returns the unique identifier of this shard.
+     * @return The shard ID.
+     */
     int Shard::getId() const
     {
       return id;
     }
 
-  }  // namespace network
-}  // namespace sbmpi
+  } // namespace network
+} // namespace sbmpi

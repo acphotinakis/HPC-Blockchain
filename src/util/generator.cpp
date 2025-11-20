@@ -1,3 +1,7 @@
+/**
+ * @file generator.cpp
+ * @brief Implements utility functions for generating mock data, specifically transactions.
+ */
 #include "../../include/sbmpi/util/generator.h"
 #include <algorithm>  // For std::min
 #include <iomanip>    // For std::setw, std::fixed, std::setprecision
@@ -10,6 +14,18 @@ namespace sbmpi
   namespace util
   {
 
+    /**
+     * @brief Generates a specified number of mock transactions.
+     *
+     * Transactions are generated with random senders, receivers (ensuring different
+     * from sender), and amounts. A fixed seed is used for the random number
+     * generator to ensure deterministic and repeatable results for benchmarking.
+     * Each transaction is assigned a unique, deterministic ID and a simulated signature.
+     * The first 10 generated transactions are pretty-printed to stdout.
+     *
+     * @param count The number of mock transactions to generate.
+     * @return A std::vector of generated core::state::Transaction objects.
+     */
     std::vector<sbmpi::core::state::Transaction> generateMockTransactions(
         size_t count)
     {
@@ -81,8 +97,8 @@ namespace sbmpi
       return transactions;
     }
 
-  }  // namespace util
-}  // namespace sbmpi
+  } // namespace util
+} // namespace sbmpi
 // #include "../../include/sbmpi/util/generator.h"
 // #include <iostream>
 // #include <random>

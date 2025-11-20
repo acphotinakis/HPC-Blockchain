@@ -1,3 +1,7 @@
+/**
+ * @file pbft.cpp
+ * @brief Implements the Practical Byzantine Fault Tolerance (PBFT) consensus protocol.
+ */
 #include "../../include/sbmpi/consensus/pbft.h"
 
 #include <iostream>
@@ -9,13 +13,20 @@
 #include "../../include/sbmpi/consensus/pbft_messages.h"
 #include "../../include/sbmpi/network/mpi_wrapper.h"
 #include "../../include/sbmpi/util/crypto.h"
-#include "../../include/sbmpi/util/logging.h"  // Added logging
+#include "../../include/sbmpi/util/logging.h" // Added logging
 
 namespace sbmpi
 {
   namespace consensus
   {
 
+    /**
+     * @brief Implements the Practical Byzantine Fault Tolerance (PBFT) consensus protocol.
+     *
+     * This class manages the PBFT phases (Pre-Prepare, Prepare, Commit) to reach
+     * consensus on a microblock within a shard. It handles message broadcasting,
+     * quorum checking, and fault tolerance calculations.
+     */
     PBFT::PBFT(MPI_Comm comm, int rank, int leaderRank, int numNodes)
         : communicator(comm),
           myRank(rank),
@@ -26,6 +37,10 @@ namespace sbmpi
       maxFaultyNodes = (numNodes - 1) / 3;
     }
 
+    /**
+     * @brief Broadcasts a PBFT message to all other nodes in the communicator.
+     * @param msg The PBFTMessage to be broadcast.
+     */
     void PBFT::broadcastMessage(const PBFTMessage& msg)
     {
       std::vector<char> data = serializeMessage(msg);
@@ -36,11 +51,18 @@ namespace sbmpi
       }
     }
 
+    /**
+     * @brief Initiates the Pre-Prepare phase of PBFT.
+     *
+     * The leader node broadcasts the proposed block and a PRE-PREPARE message
+     * to all replicas.
+     * @param block The MicroBlock proposed by the leader.
+     */
     void PBFT::prePrepare(const core::blocks::MicroBlock& block)
     {
       PBFTMessage msg;
-      msg.type      = PBFTMessageType::PRE_PREPARE;
-      msg.senderId  = myRank;
+      msg.type = PBFTMessageType::PRE_PREPARE;
+      msg.senderId = myRank;
       msg.blockHash = block.getHash();
 
       // 1. Broadcast the full block first (simplification for simulation)
@@ -54,35 +76,58 @@ namespace sbmpi
       broadcastMessage(msg);
     }
 
+    /**
+     * @brief Sends a PREPARE message for a given block hash.
+     *
+     * Replicas send this message after receiving a valid PRE-PREPARE message
+     * and verifying the proposed block.
+     * @param blockHash The hash of the block being prepared.
+     */
     void PBFT::prepare(const std::string& blockHash)
     {
       PBFTMessage msg;
-      msg.type      = PBFTMessageType::PREPARE;
-      msg.senderId  = myRank;
+      msg.type = PBFTMessageType::PREPARE;
+      msg.senderId = myRank;
       msg.blockHash = blockHash;
       broadcastMessage(msg);
     }
 
+    /**
+     * @brief Sends a COMMIT message for a given block hash.
+     *
+     * Nodes send this message after collecting a quorum of PREPARE messages.
+     * @param blockHash The hash of the block being committed.
+     */
     void PBFT::commit(const std::string& blockHash)
     {
       PBFTMessage msg;
-      msg.type      = PBFTMessageType::COMMIT;
-      msg.senderId  = myRank;
+      msg.type = PBFTMessageType::COMMIT;
+      msg.senderId = myRank;
       msg.blockHash = blockHash;
       broadcastMessage(msg);
     }
 
-    // Updated signature to accept previousHash
+    /**
+     * @brief Executes the PBFT consensus protocol to agree on a new microblock.
+     *
+     * This method orchestrates the entire PBFT process, including Pre-Prepare,
+     * Prepare, and Commit phases. The leader proposes a block, and replicas
+     * validate and agree upon it.
+     *
+     * @param transactions A vector of transactions to be included in the proposed block.
+     * @param previousHash The hash of the previous block in the blockchain.
+     * @return The MicroBlock that has reached consensus.
+     */
     core::blocks::MicroBlock PBFT::run(
         const std::vector<core::state::Transaction>& transactions,
-        const std::string&                           previousHash)
+        const std::string& previousHash)
     {
       core::blocks::MicroBlock block;
 
       // --- PHASE 0: PRE-PREPARE ---
       if (myRank == leaderRank) {
         std::string merkleRoot = util::merkle(transactions);
-        //  Use the passed previousHash instead of the placeholder
+        // Use the passed previousHash instead of the placeholder
         block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
         block.transactions = transactions;
 
@@ -100,7 +145,7 @@ namespace sbmpi
       }
 
       std::string proposedBlockHash = block.getHash();
-      int         quorum            = 2 * maxFaultyNodes + 1;
+      int quorum = 2 * maxFaultyNodes + 1;
 
       // --- PHASE 1: PREPARE ---
       if (myRank != leaderRank) {
@@ -120,9 +165,9 @@ namespace sbmpi
         MPI_Status status;
         MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
 
-        int               source  = status.MPI_SOURCE;
+        int source = status.MPI_SOURCE;
         std::vector<char> msgData = network::recv(source, 0, communicator);
-        PBFTMessage       msg     = deserializeMessage(msgData);
+        PBFTMessage msg = deserializeMessage(msgData);
 
         if (msg.type == PBFTMessageType::PREPARE &&
             msg.blockHash == proposedBlockHash) {
@@ -139,7 +184,7 @@ namespace sbmpi
       // --- PHASE 2: COMMIT ---
       commit(proposedBlockHash);
 
-      int           commitCount = 1;
+      int commitCount = 1;
       std::set<int> commitVoters;
       commitVoters.insert(myRank);
 
@@ -147,9 +192,9 @@ namespace sbmpi
         MPI_Status status;
         MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
 
-        int               source  = status.MPI_SOURCE;
+        int source = status.MPI_SOURCE;
         std::vector<char> msgData = network::recv(source, 0, communicator);
-        PBFTMessage       msg     = deserializeMessage(msgData);
+        PBFTMessage msg = deserializeMessage(msgData);
 
         if (msg.type == PBFTMessageType::COMMIT &&
             msg.blockHash == proposedBlockHash) {
@@ -167,180 +212,5 @@ namespace sbmpi
       return block;
     }
 
-  }  // namespace consensus
-}  // namespace sbmpi
-
-// #include "../../include/sbmpi/consensus/pbft.h"
-
-// #include <iostream>
-// #include <map>
-// #include <set>
-// #include <string>
-// #include <vector>
-
-// #include "../../include/sbmpi/consensus/pbft_messages.h"
-// #include "../../include/sbmpi/network/mpi_wrapper.h"
-// #include "../../include/sbmpi/util/crypto.h"
-// #include "../../include/sbmpi/util/logging.h"  // Added logging
-
-// namespace sbmpi
-// {
-//   namespace consensus
-//   {
-
-//     PBFT::PBFT(MPI_Comm comm, int rank, int leaderRank, int numNodes)
-//         : communicator(comm),
-//           myRank(rank),
-//           leaderRank(leaderRank),
-//           numNodes(numNodes)
-//     {
-//       // PBFT tolerance: f = (n-1)/3. Quorum = 2f + 1.
-//       maxFaultyNodes = (numNodes - 1) / 3;
-//     }
-
-//     void PBFT::broadcastMessage(const PBFTMessage& msg)
-//     {
-//       std::vector<char> data = serializeMessage(msg);
-//       for (int i = 0; i < numNodes; ++i) {
-//         if (i != myRank) {
-//           network::send(data, i, 0, communicator);
-//         }
-//       }
-//     }
-
-//     void PBFT::prePrepare(const core::blocks::MicroBlock& block)
-//     {
-//       PBFTMessage msg;
-//       msg.type      = PBFTMessageType::PRE_PREPARE;
-//       msg.senderId  = myRank;
-//       msg.blockHash = block.getHash();
-
-//       // 1. Broadcast the full block first (simplification for simulation)
-//       std::vector<char> blockData = block.serialize();
-//       network::bcast(blockData, leaderRank, communicator);
-
-//       // 2. Broadcast the Pre-Prepare consensus message
-//       util::Logger::getLogger().debug("PBFT [Rank " + std::to_string(myRank)
-//       +
-//                                       "]: Broadcasting PRE-PREPARE for block
-//                                       " + msg.blockHash);
-//       broadcastMessage(msg);
-//     }
-
-//     void PBFT::prepare(const std::string& blockHash)
-//     {
-//       PBFTMessage msg;
-//       msg.type      = PBFTMessageType::PREPARE;
-//       msg.senderId  = myRank;
-//       msg.blockHash = blockHash;
-//       broadcastMessage(msg);
-//     }
-
-//     void PBFT::commit(const std::string& blockHash)
-//     {
-//       PBFTMessage msg;
-//       msg.type      = PBFTMessageType::COMMIT;
-//       msg.senderId  = myRank;
-//       msg.blockHash = blockHash;
-//       broadcastMessage(msg);
-//     }
-
-//     core::blocks::MicroBlock PBFT::run(
-//         const std::vector<core::state::Transaction>& transactions,
-//         const std::string&                           previousHash)
-//     {
-//       core::blocks::MicroBlock block;
-
-//       // --- PHASE 0: PRE-PREPARE ---
-//       if (myRank == leaderRank) {
-//         std::string merkleRoot = util::merkle(transactions);
-//         block.header = core::blocks::BlockHeader(1,
-//         "genesis_hash_placeholder",
-//                                                  merkleRoot);
-//         block.transactions = transactions;
-
-//         util::Logger::getLogger().info("PBFT Leader: Proposing block with " +
-//                                        std::to_string(transactions.size()) +
-//                                        " transactions.");
-//         prePrepare(block);
-//       } else {
-//         // Replicas receive the block content
-//         std::vector<char> blockData;
-//         network::bcast(blockData, leaderRank, communicator);
-//         block.deserialize(blockData);
-//         util::Logger::getLogger().debug(
-//             "PBFT Replica: Received block proposal.");
-//       }
-
-//       std::string proposedBlockHash = block.getHash();
-//       int         quorum            = 2 * maxFaultyNodes + 1;
-
-//       // --- PHASE 1: PREPARE ---
-//       if (myRank != leaderRank) {
-//         prepare(proposedBlockHash);
-//       }
-
-//       int prepareCount = 0;
-//       if (myRank == leaderRank)
-//         prepareCount++;
-//       else
-//         prepareCount++;
-
-//       std::set<int> prepareVoters;
-//       prepareVoters.insert(myRank);
-
-//       while (prepareCount < quorum) {
-//         MPI_Status status;
-//         MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
-
-//         int               source  = status.MPI_SOURCE;
-//         std::vector<char> msgData = network::recv(source, 0, communicator);
-//         PBFTMessage       msg     = deserializeMessage(msgData);
-
-//         if (msg.type == PBFTMessageType::PREPARE &&
-//             msg.blockHash == proposedBlockHash) {
-//           if (prepareVoters.find(msg.senderId) == prepareVoters.end()) {
-//             prepareVoters.insert(msg.senderId);
-//             prepareCount++;
-//           }
-//         }
-//       }
-//       util::Logger::getLogger().debug("PBFT [Rank " + std::to_string(myRank)
-//       +
-//                                       "]: PREPARED (Quorum " +
-//                                       std::to_string(prepareCount) + ")");
-
-//       // --- PHASE 2: COMMIT ---
-//       commit(proposedBlockHash);
-
-//       int           commitCount = 1;
-//       std::set<int> commitVoters;
-//       commitVoters.insert(myRank);
-
-//       while (commitCount < quorum) {
-//         MPI_Status status;
-//         MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
-
-//         int               source  = status.MPI_SOURCE;
-//         std::vector<char> msgData = network::recv(source, 0, communicator);
-//         PBFTMessage       msg     = deserializeMessage(msgData);
-
-//         if (msg.type == PBFTMessageType::COMMIT &&
-//             msg.blockHash == proposedBlockHash) {
-//           if (commitVoters.find(msg.senderId) == commitVoters.end()) {
-//             commitVoters.insert(msg.senderId);
-//             commitCount++;
-//           }
-//         }
-//       }
-//       util::Logger::getLogger().debug("PBFT [Rank " + std::to_string(myRank)
-//       +
-//                                       "]: COMMITTED (Quorum " +
-//                                       std::to_string(commitCount) + ")");
-
-//       // --- CONSENSUS REACHED ---
-//       return block;
-//     }
-
-//   }  // namespace consensus
-// }  // namespace sbmpi
+  } // namespace consensus
+} // namespace sbmpi
