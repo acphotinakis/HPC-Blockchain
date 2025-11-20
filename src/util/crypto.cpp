@@ -45,7 +45,7 @@ namespace sbmpi
     bool verify(const std::string& data, const std::string& signature,
                 const std::string& publicKey)
     {
-      // FIX: Align verification with the generator's signing logic.
+      //  Align verification with the generator's signing logic.
       // The generator signs with "private_key_" + sender.
       // The transaction passes 'sender' (the address) as 'publicKey'.
       // So to verify, we must reconstruct the signing key used by the mock

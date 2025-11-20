@@ -17,7 +17,7 @@ namespace sbmpi
     namespace committee
     {
 
-      // FIX: Explicitly initialize the Base Class (Committee)
+      //  Explicitly initialize the Base Class (Committee)
       // We initialize Base with 0s, then populate them correctly in the body
       // using MPI calls.
       FinalCommittee::FinalCommittee(MPI_Comm comm, int num_shards)
@@ -30,7 +30,7 @@ namespace sbmpi
 
       FinalCommittee::~FinalCommittee() {}
 
-      // FIX: Changed signature to accept specific ranks of shard leaders
+      //  Changed signature to accept specific ranks of shard leaders
       std::vector<core::blocks::MicroBlock> FinalCommittee::collectMicroBlocks(
           const std::vector<int>& shardLeaderRanks)
       {
@@ -42,7 +42,7 @@ namespace sbmpi
             "Final Committee: Waiting for MicroBlocks from " +
             std::to_string(shardLeaderRanks.size()) + " shards.");
 
-        // FIX: Iterate over the specific leader ranks, not generic indices
+        //  Iterate over the specific leader ranks, not generic indices
         for (int leaderRank : shardLeaderRanks) {
           util::Logger::getLogger().debug(
               "Final Committee: Waiting for Shard Leader at Rank " +

@@ -99,7 +99,7 @@ namespace sbmpi
       util::Logger::getLogger().info("Shard " + std::to_string(id) +
                                      ": Starting PBFT consensus.");
 
-      // FIX: Pass previousBlockHash to run()
+      //  Pass previousBlockHash to run()
       core::blocks::MicroBlock microBlock =
           pbft.run(mempool, previousBlockHash);
       microBlock.shardId = id;  // Ensure block is tagged with our ID

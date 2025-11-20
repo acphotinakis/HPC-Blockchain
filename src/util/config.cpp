@@ -16,7 +16,7 @@ namespace sbmpi
       for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
-        // --- FIX: Handle Long Flags from Makefile ---
+        // ---  Handle Long Flags from Makefile ---
         if ((arg == "-s" || arg == "--shards") && i + 1 < argc) {
           // Argument is the number of shards
           numShards = std::stoi(argv[++i]);

@@ -233,8 +233,8 @@ int main(int argc, char** argv)
   }
 
   if (finalCommittee) {
-    // FIX: Calculate the global ranks of all shard leaders so FC knows who to
-    // listen to
+    // Calculate the global ranks of all shard leaders so FC knows who to listen
+    // to
     std::vector<int> shardLeaderRanks;
     int              shardPoolSize     = world_size - FINAL_COMMITTEE_SIZE;
     int              nodesPerShardBase = shardPoolSize / config.numShards;

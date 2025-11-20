@@ -72,7 +72,7 @@ namespace sbmpi
       broadcastMessage(msg);
     }
 
-    // FIX: Updated signature to accept previousHash
+    // Updated signature to accept previousHash
     core::blocks::MicroBlock PBFT::run(
         const std::vector<core::state::Transaction>& transactions,
         const std::string&                           previousHash)
@@ -82,7 +82,7 @@ namespace sbmpi
       // --- PHASE 0: PRE-PREPARE ---
       if (myRank == leaderRank) {
         std::string merkleRoot = util::merkle(transactions);
-        // FIX: Use the passed previousHash instead of the placeholder
+        //  Use the passed previousHash instead of the placeholder
         block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
         block.transactions = transactions;
 
