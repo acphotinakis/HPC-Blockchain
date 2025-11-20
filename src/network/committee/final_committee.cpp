@@ -6,6 +6,7 @@
 #include "../../../include/sbmpi/core/blocks/macro_block.h"
 #include "../../../include/sbmpi/core/blocks/micro_block.h"
 #include "../../../include/sbmpi/network/mpi_wrapper.h"
+#include "../../../include/sbmpi/util/logging.h"
 #include "../../../include/sbmpi/util/serialization.h"
 #include "mpi.h"
 
@@ -37,8 +38,15 @@ namespace sbmpi
         int                                   world_rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
+        util::Logger::getLogger().info(
+            "Final Committee: Waiting for MicroBlocks from " +
+            std::to_string(shardLeaderRanks.size()) + " shards.");
+
         // FIX: Iterate over the specific leader ranks, not generic indices
         for (int leaderRank : shardLeaderRanks) {
+          util::Logger::getLogger().debug(
+              "Final Committee: Waiting for Shard Leader at Rank " +
+              std::to_string(leaderRank));
           // Receive from the specific Shard Leader
           std::vector<char> microBlockData =
               network::recv(leaderRank, 0, MPI_COMM_WORLD);
@@ -46,6 +54,12 @@ namespace sbmpi
           core::blocks::MicroBlock microBlock;
           microBlock.deserialize(microBlockData);
           microBlocks.push_back(microBlock);
+
+          util::Logger::getLogger().info(
+              "Final Committee: Received MicroBlock from Shard Leader Rank " +
+              std::to_string(leaderRank) +
+              ". Block Hash: " + microBlock.getHash() +
+              ". Tx Count: " + std::to_string(microBlock.transactions.size()));
         }
 
         return microBlocks;
@@ -54,12 +68,17 @@ namespace sbmpi
       core::blocks::MacroBlock FinalCommittee::assembleMacroBlock(
           const std::vector<core::blocks::MicroBlock>& microBlocks)
       {
+        util::Logger::getLogger().info(
+            "Final Committee: Assembling MacroBlock from " +
+            std::to_string(microBlocks.size()) + " MicroBlocks.");
+
         core::blocks::MacroBlock macroBlock;
 
         // In a real system, fetch this from the Blockchain state
         macroBlock.header = core::blocks::BlockHeader(
             0, "prev_hash_placeholder", "merkle_root_placeholder");
 
+        int totalTx = 0;
         for (const auto& microBlock : microBlocks) {
           macroBlock.addMicroBlock(microBlock);
 
@@ -67,7 +86,13 @@ namespace sbmpi
           macroBlock.transactions.insert(macroBlock.transactions.end(),
                                          microBlock.transactions.begin(),
                                          microBlock.transactions.end());
+          totalTx += microBlock.transactions.size();
         }
+
+        util::Logger::getLogger().info(
+            "Final Committee: MacroBlock Assembled. Total Transactions "
+            "Finalized: " +
+            std::to_string(totalTx));
         return macroBlock;
       }
 

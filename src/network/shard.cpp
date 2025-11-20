@@ -55,19 +55,35 @@ namespace sbmpi
         int numTx  = util::unpack_int(buffer, offset);
 
         mempool.clear();
+        util::Logger::getLogger().info(
+            "Shard " + std::to_string(id) + " Leader: Starting ingestion of " +
+            std::to_string(numTx) + " transactions.");
+
         for (int i = 0; i < numTx; ++i) {
           int                      txSize = util::unpack_int(buffer, offset);
           std::vector<char>        txData(buffer.begin() + offset,
                                           buffer.begin() + offset + txSize);
           core::state::Transaction tx;
           tx.deserialize(txData);
-          mempool.push_back(tx);
+
+          // [LOG] Deep validation log
+          if (tx.verify()) {
+            // util::Logger::getLogger().debug("Shard " + std::to_string(id) +
+            // ": Validated transaction " + tx.id);
+            mempool.push_back(tx);
+          } else {
+            util::Logger::getLogger().error(
+                "Shard " + std::to_string(id) +
+                ": FAILED validation for transaction " + tx.id);
+          }
+
           offset += txSize;
         }
 
-        util::Logger::getLogger().debug(
-            "Shard " + std::to_string(id) + " Leader received " +
-            std::to_string(mempool.size()) + " transactions from Root.");
+        util::Logger::getLogger().info(
+            "Shard " + std::to_string(id) +
+            " Leader: Ingestion complete. Mempool size: " +
+            std::to_string(mempool.size()));
       }
 
       // 2. CONSENSUS PHASE
@@ -77,8 +93,14 @@ namespace sbmpi
 
       // Run consensus. Only the leader passes the mempool; replicas pass empty
       // vectors (PBFT handles sync)
+      util::Logger::getLogger().info("Shard " + std::to_string(id) +
+                                     ": Starting PBFT consensus.");
       core::blocks::MicroBlock microBlock = pbft.run(mempool);
       microBlock.shardId = id;  // Ensure block is tagged with our ID
+
+      util::Logger::getLogger().info(
+          "Shard " + std::to_string(id) +
+          ": Consensus reached. MicroBlock Hash: " + microBlock.getHash());
 
       // 3. REPORTING PHASE
       // If I am the Shard Leader, send the valid MicroBlock to the Final
@@ -91,7 +113,8 @@ namespace sbmpi
 
         util::Logger::getLogger().info(
             "Shard " + std::to_string(id) +
-            " Leader sent MicroBlock to Final Committee.");
+            " Leader sent MicroBlock to Final Committee (Rank " +
+            std::to_string(leaderRank) + ").");
       }
 
       return microBlock;
