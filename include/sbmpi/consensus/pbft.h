@@ -28,7 +28,8 @@ namespace sbmpi
      public:
       PBFT(MPI_Comm comm, int rank, int leaderRank, int numNodes);
       core::blocks::MicroBlock run(
-          const std::vector<core::state::Transaction>& transactions);
+          const std::vector<core::state::Transaction>& transactions,
+          const std::string&                           previousHash);
 
      private:
       MPI_Comm communicator;

@@ -68,8 +68,8 @@ namespace sbmpi
 
           // [LOG] Deep validation log
           if (tx.verify()) {
-            // util::Logger::getLogger().debug("Shard " + std::to_string(id) +
-            // ": Validated transaction " + tx.id);
+            util::Logger::getLogger().debug("Shard " + std::to_string(id) +
+                                            ": Validated transaction " + tx.id);
             mempool.push_back(tx);
           } else {
             util::Logger::getLogger().error(
@@ -93,9 +93,15 @@ namespace sbmpi
 
       // Run consensus. Only the leader passes the mempool; replicas pass empty
       // vectors (PBFT handles sync)
+      std::string previousBlockHash =
+          "0000000000000000000000000000000000000000000000000000000000000000";
+
       util::Logger::getLogger().info("Shard " + std::to_string(id) +
                                      ": Starting PBFT consensus.");
-      core::blocks::MicroBlock microBlock = pbft.run(mempool);
+
+      // FIX: Pass previousBlockHash to run()
+      core::blocks::MicroBlock microBlock =
+          pbft.run(mempool, previousBlockHash);
       microBlock.shardId = id;  // Ensure block is tagged with our ID
 
       util::Logger::getLogger().info(
