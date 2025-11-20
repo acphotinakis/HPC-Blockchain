@@ -9,6 +9,7 @@
  */
 #include <string.h>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <numeric>
 #include <vector>
@@ -30,7 +31,7 @@
 #include "mpi.h"
 
 // --- Constants (These align with the project structure) ---
-const int FINAL_COMMITTEE_SIZE = 4;  // Fixed size for fault tolerance (3f+1)
+const int FINAL_COMMITTEE_SIZE = 1;  // Fixed size for fault tolerance (3f+1)
 
 using namespace sbmpi::util;
 using namespace sbmpi::core;
@@ -66,12 +67,10 @@ NodeRole determineNodeAssignment(int world_rank, int world_size, int numShards,
   fcLeaderRank_out = FINAL_COMMITTEE_START;  // FC Leader is always Rank 0
 
   // 1. Assign Final Committee Nodes
-  if (world_rank >= FINAL_COMMITTEE_START && world_rank < fc_size) {
+  if (world_rank == FINAL_COMMITTEE_START && world_rank < fc_size) {
     shardId_out =
         numShards;  // Use 'numShards' as the unique color for the FC group
     if (world_rank == FINAL_COMMITTEE_START) {
-      return NodeRole::FINAL_COMMITTEE_MEMBER;
-    } else {
       return NodeRole::FINAL_COMMITTEE_MEMBER;
     }
   }
@@ -136,6 +135,8 @@ int main(int argc, char** argv)
   std::unique_ptr<sbmpi::network::Shard>                     myShard = nullptr;
   std::unique_ptr<sbmpi::network::committee::FinalCommittee> finalCommittee =
       nullptr;
+  std::unique_ptr<sbmpi::core::Blockchain> blockchain = 
+      std::make_unique<sbmpi::core::Blockchain>(); 
 
   // Logger setup
   sbmpi::util::Logger& logger = sbmpi::util::Logger::getLogger();
@@ -193,15 +194,16 @@ int main(int argc, char** argv)
     myShard = std::make_unique<sbmpi::network::Shard>(
         myNode.getShardId(), shard_comm, fc_leader_global_rank);
 
-  } else if (role == NodeRole::FINAL_COMMITTEE_MEMBER ||
-             role == NodeRole::FINAL_COMMITTEE_MEMBER) { // Note: This condition is redundant, but kept as is.
+  } else if (role == NodeRole::FINAL_COMMITTEE_MEMBER) { // Note: This condition is redundant, but kept as is.
     finalCommittee =
         std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm);
   }
 
-  logger.info("Assigned Role: " + std::to_string(static_cast<int>(role)) +
+  logger.info("Assigned Role: " + nodeRoleToString(myNode.getRole()) +
               ", Shard/FC Color: " + std::to_string(shard_color) +
               ", Local Rank: " + std::to_string(shard_rank));
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   // --- Phase 4: Transaction Generation and Distribution ---
   // The root process (world_rank 0) generates mock transactions and distributes
@@ -283,23 +285,28 @@ int main(int argc, char** argv)
 
     for (int i = 0; i < config.numShards; ++i) {
       shardLeaderRanks.push_back(offset);
+      logger.info("Shard leader added: " + std::to_string(offset));
       offset += nodesPerShardBase + (i < remainder ? 1 : 0);
     }
 
     // Pass the calculated ranks to collectMicroBlocks
-    std::vector<sbmpi::core::blocks::MicroBlock> collectedMicroBlocks =
-        finalCommittee->collectMicroBlocks(shardLeaderRanks);
-
-    if (myNode.getRole() == NodeRole::FINAL_COMMITTEE_MEMBER) {
+    std::vector<sbmpi::core::blocks::MicroBlock> collectedMicroBlocks;
+    if (world_rank == 0) { // Only the leader needs to receive blocks from shard leaders
+      collectedMicroBlocks = finalCommittee->collectMicroBlocks(shardLeaderRanks);
+      logger.info("Collected all microblocks! Size: " + std::to_string(collectedMicroBlocks.size()));
+      
+      // Pass in previous block info in order to construct prev block information for new block
       sbmpi::core::blocks::MacroBlock macroBlock =
-          finalCommittee->assembleMacroBlock(collectedMicroBlocks);
-
-      sbmpi::core::Blockchain blockchain;
-      blockchain.addBlock(
+          finalCommittee->assembleMacroBlock(collectedMicroBlocks, blockchain->getLatestBlock());
+ 
+      blockchain->addBlock(
           std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
       logger.info("MacroBlock assembled and added to blockchain.");
     }
   }
+
+  // Synchronize processes before continuing to final step
+  MPI_Barrier(MPI_COMM_WORLD);
 
   // --- Phase 6: Finalization ---
   // The root process records simulation metrics and cleans up MPI resources.
@@ -309,6 +316,20 @@ int main(int argc, char** argv)
     sbmpi::util::Metrics::recordTime("total_simulation", elapsed_time,
                                      config.numTransactions);
     sbmpi::util::Metrics::save("metrics.csv");
+
+    // Print out the current blockchain for a given run
+    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain = 
+      blockchain->getBlockchain();
+    for (size_t bindex = 0; bindex < chain.size(); bindex++) {
+      if (chain[bindex]) {
+        std::stringstream ss;
+        ss << "[Block " << std::to_string(bindex) 
+        << "] | Hash: " << chain[bindex]->getHash()
+        << " | Number of Transactions: " << std::to_string(chain[bindex]->transactions.size());
+        logger.info(ss.str());
+      }
+    }
+
     logger.info("Simulation finished in " + std::to_string(elapsed_time) +
                 " seconds.");
   }

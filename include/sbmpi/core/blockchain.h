@@ -17,6 +17,7 @@ namespace sbmpi
       void                 addBlock(std::unique_ptr<blocks::Block> block);
       const blocks::Block* getBlock(int height) const;
       const blocks::Block* getLatestBlock() const;
+      const std::vector<std::unique_ptr<blocks::Block>>& getBlockchain() const;
       bool                 validate() const;
       int                  getHeight() const;
 

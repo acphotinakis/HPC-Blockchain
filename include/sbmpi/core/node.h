@@ -15,6 +15,16 @@ namespace sbmpi
       UNASSIGNED
     };
 
+    inline std::string nodeRoleToString(NodeRole role) {
+      switch (role) {
+          case NodeRole::UNASSIGNED: return "UNASSIGNED";
+          case NodeRole::SHARD_LEADER: return "SHARD_LEADER";
+          case NodeRole::SHARD_MEMBER: return "SHARD_MEMBER";
+          case NodeRole::FINAL_COMMITTEE_MEMBER: return "FINAL_COMMITTEE_MEMBER";
+          default: return "UNKNOWN";
+      }
+    }
+
     class Node
     {
      public:

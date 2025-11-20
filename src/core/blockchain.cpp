@@ -3,6 +3,7 @@
  * @brief Implements the Blockchain class for managing a chain of blocks.
  */
 #include "../../include/sbmpi/core/blockchain.h"
+#include "../../include/sbmpi/util/logging.h"
 
 #include <memory>
 #include <vector>
@@ -50,6 +51,8 @@ namespace sbmpi
         if (latest && latest->getHash() == block->header.previousHash &&
             latest->header.height + 1 == block->header.height) {
           chain.push_back(std::move(block));
+        } else {
+          util::Logger::getLogger().error("Could not add block to blockchain!");
         }
       }
     }
@@ -65,6 +68,15 @@ namespace sbmpi
         return chain[height].get();
       }
       return nullptr;
+    }
+
+    /**
+     * @brief Retrieves the collection of blocks in the blockchain.
+     * @return A vector containing a collection of blocks in the blockchain.
+    */
+    const std::vector<std::unique_ptr<blocks::Block>>& Blockchain::getBlockchain() const 
+    {
+      return chain;
     }
 
     /**

@@ -48,10 +48,12 @@ namespace sbmpi
          * * Creates a new MacroBlock containing the hashes of the provided
          * MicroBlocks and aggregates their transactions.
          * * @param microBlocks The vector of MicroBlocks to include.
+         * * @param prevBlock The previous block in the chain, necessary for linking a new block.
          * @return The newly created MacroBlock.
          */
         core::blocks::MacroBlock assembleMacroBlock(
-            const std::vector<core::blocks::MicroBlock>& microBlocks);
+            const std::vector<core::blocks::MicroBlock>& microBlocks,
+            const core::blocks::Block* prevBlock);
 
        private:
         int num_shards;

@@ -56,7 +56,8 @@ namespace sbmpi
         MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
         util::Logger::getLogger().info(
-            "Final Committee: Waiting for MicroBlocks from " +
+            "Final Committee: Rank " + std::to_string(world_rank) + 
+            " waiting for MicroBlocks from " +
             std::to_string(shardLeaderRanks.size()) + " shards.");
 
         // Iterate over the specific leader ranks, not generic indices
@@ -79,6 +80,11 @@ namespace sbmpi
               ". Tx Count: " + std::to_string(microBlock.transactions.size()));
         }
 
+        util::Logger::getLogger().info(
+          "Final Committee: Received " + std::to_string(microBlocks.size()) +
+          " MicroBlocks from " + std::to_string(shardLeaderRanks.size()) + " shards."
+        );
+
         return microBlocks;
       }
 
@@ -92,7 +98,8 @@ namespace sbmpi
        * @return A newly assembled MacroBlock.
        */
       core::blocks::MacroBlock FinalCommittee::assembleMacroBlock(
-          const std::vector<core::blocks::MicroBlock>& microBlocks)
+          const std::vector<core::blocks::MicroBlock>& microBlocks,
+          const core::blocks::Block* prevBlock)
       {
         util::Logger::getLogger().info(
             "Final Committee: Assembling MacroBlock from " +
@@ -102,7 +109,7 @@ namespace sbmpi
 
         // In a real system, fetch this from the Blockchain state
         macroBlock.header = core::blocks::BlockHeader(
-            0, "prev_hash_placeholder", "merkle_root_placeholder");
+            prevBlock->header.height + 1, prevBlock->getHash(), prevBlock->header.merkleRoot);
 
         int totalTx = 0;
         for (const auto& microBlock : microBlocks) {
