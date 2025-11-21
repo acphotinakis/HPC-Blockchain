@@ -1,12 +1,13 @@
 /**
  * @file metrics.cpp
- * @brief Implements the Metrics class for recording and reporting simulation performance.
+ * @brief Implements the Metrics class for recording and reporting simulation
+ * performance.
  */
 #include "../../include/sbmpi/util/metrics.h"
+#include <sys/stat.h>
 #include <fstream>
 #include <iostream>
 #include <map>
-
 namespace sbmpi
 {
   namespace util
@@ -18,15 +19,17 @@ namespace sbmpi
        * @brief Structure to hold results for a single experiment.
        */
       struct ExperimentResult {
-        std::string name;          ///< Name of the experiment.
-        double      totalTime;     ///< Total time taken for the experiment.
-        int         numTransactions; ///< Number of transactions processed.
+        std::string name;             ///< Name of the experiment.
+        double      totalTime;        ///< Total time taken for the experiment.
+        int         numTransactions;  ///< Number of transactions processed.
       };
-      std::map<std::string, ExperimentResult> results; ///< Stores all experiment results.
+      std::map<std::string, ExperimentResult>
+          results;  ///< Stores all experiment results.
     }  // namespace
 
     /**
-     * @brief The Metrics class provides static methods to record and save simulation performance metrics.
+     * @brief The Metrics class provides static methods to record and save
+     * simulation performance metrics.
      *
      * It tracks total time and number of transactions for various experiments
      * and can calculate throughput, saving all data to a CSV file.
@@ -37,7 +40,8 @@ namespace sbmpi
      * @brief Records the time and transaction count for a specific experiment.
      * @param experimentName A unique name for the experiment.
      * @param totalTime The total time measured for the experiment in seconds.
-     * @param numTransactions The number of transactions processed during the experiment.
+     * @param numTransactions The number of transactions processed during the
+     * experiment.
      */
     void Metrics::recordTime(const std::string& experimentName,
                              double totalTime, int numTransactions)
@@ -46,7 +50,8 @@ namespace sbmpi
     }
 
     /**
-     * @brief Calculates the throughput (transactions per second) for an experiment.
+     * @brief Calculates the throughput (transactions per second) for an
+     * experiment.
      * @param totalTime The total time taken for the experiment.
      * @param numTransactions The number of transactions processed.
      * @return The calculated throughput, or 0 if totalTime is zero.
@@ -64,14 +69,43 @@ namespace sbmpi
      * Number of Transactions, and Calculated Throughput.
      * @param filepath The path to the output CSV file.
      */
+    // void Metrics::save(const std::string& filepath)
+    // {
+    //   std::ofstream file(filepath);
+    //   if (!file.is_open()) {
+    //     std::cerr << "Failed to open metrics file: " << filepath <<
+    //     std::endl; return;
+    //   }
+    //   file << "Experiment,TotalTime,NumTransactions,Throughput" << std::endl;
+    //   for (const auto& pair : results) {
+    //     const auto& result = pair.second;
+    //     double      throughput =
+    //         calculateThroughput(result.totalTime, result.numTransactions);
+    //     file << result.name << "," << result.totalTime << ","
+    //          << result.numTransactions << "," << throughput << std::endl;
+    //   }
+    // }
+
     void Metrics::save(const std::string& filepath)
     {
-      std::ofstream file(filepath);
+      bool writeHeader = false;
+
+      struct stat buffer;
+      if (stat(filepath.c_str(), &buffer) != 0) {
+        // File does not exist, write header
+        writeHeader = true;
+      }
+
+      std::ofstream file(filepath, std::ios::app);
       if (!file.is_open()) {
         std::cerr << "Failed to open metrics file: " << filepath << std::endl;
         return;
       }
-      file << "Experiment,TotalTime,NumTransactions,Throughput" << std::endl;
+
+      if (writeHeader) {
+        file << "Experiment,TotalTime,NumTransactions,Throughput" << std::endl;
+      }
+
       for (const auto& pair : results) {
         const auto& result = pair.second;
         double      throughput =
