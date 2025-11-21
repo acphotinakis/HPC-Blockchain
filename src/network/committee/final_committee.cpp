@@ -14,6 +14,9 @@
 #include "../../../include/sbmpi/util/serialization.h"
 #include "mpi.h"
 
+#include "../../../include/sbmpi/util/timer.h"
+#include "../../../include/sbmpi/util/metrics.h"
+
 namespace sbmpi
 {
   namespace network
@@ -99,8 +102,12 @@ namespace sbmpi
        */
       core::blocks::MacroBlock FinalCommittee::assembleMacroBlock(
           const std::vector<core::blocks::MicroBlock>& microBlocks,
-          const core::blocks::Block* prevBlock)
+          const core::blocks::Block* prevBlock,
+          int runID)
       {
+        util::Timer blockCreationTimer;
+        blockCreationTimer.start();
+
         util::Logger::getLogger().info(
             "Final Committee: Assembling MacroBlock from " +
             std::to_string(microBlocks.size()) + " MicroBlocks.");
@@ -121,6 +128,10 @@ namespace sbmpi
                                          microBlock.transactions.end());
           totalTx += microBlock.transactions.size();
         }
+
+        blockCreationTimer.stop();
+        double blockCreationTime = blockCreationTimer.elapsedSeconds();
+        util::BlockMetrics::record("total_simulation", runID, macroBlock.getHash(), "Macro", totalTx, blockCreationTime, prevBlock->getHash());
 
         util::Logger::getLogger().info(
             "Final Committee: MacroBlock Assembled. Total Transactions "

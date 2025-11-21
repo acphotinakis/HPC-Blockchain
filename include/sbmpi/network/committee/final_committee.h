@@ -53,7 +53,8 @@ namespace sbmpi
          */
         core::blocks::MacroBlock assembleMacroBlock(
             const std::vector<core::blocks::MicroBlock>& microBlocks,
-            const core::blocks::Block* prevBlock);
+            const core::blocks::Block* prevBlock,
+            int runID);
 
        private:
         int num_shards;

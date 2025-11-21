@@ -15,6 +15,9 @@ namespace sbmpi
       int numShards       = 1;
       int numTransactions = 1000;
       int verbose         = 1;
+      int runID           = 0;
+      int seed            = 0;
+      int transactionSize = 128;
 
       bool parse(int argc, char** argv);
       void print() const;

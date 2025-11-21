@@ -44,8 +44,15 @@ namespace sbmpi
           // Argument is the number of transactions
           numTransactions = std::stoi(argv[++i]);
 
-          // Keep existing rules for completeness, though unused by the current
-          // Makefile ARGS
+        } else if (arg == "--run-id" && i + 1 < argc) {
+          runID = std::stoi(argv[++i]);
+        
+        } else if (arg == "--seed" && i + 1 < argc) {
+          seed = std::stoi(argv[++i]);
+
+        } else if (arg == "--transaction-size" && i + 1 < argc) {
+            transactionSize = std::stoi(argv[++i]);
+
         } else if (arg == "-n" && i + 1 < argc) {
           numNodes = std::stoi(argv[++i]);
         } else if (arg == "-v" && i + 1 < argc) {
@@ -70,6 +77,9 @@ namespace sbmpi
       std::cout << "  Shards: " << numShards << std::endl;
       std::cout << "  Transactions: " << numTransactions << std::endl;
       std::cout << "  Verbose: " << verbose << std::endl;
+      std::cout << "  Run ID: " << runID << std::endl;
+      std::cout << "  Seed: " << seed << std::endl;
+      std::cout << "  Transaction Size: " << transactionSize << std::endl;
     }
 
   } // namespace util

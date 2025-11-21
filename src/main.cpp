@@ -222,6 +222,10 @@ int main(int argc, char** argv)
     std::vector<sbmpi::core::state::Transaction> all_transactions =
         sbmpi::util::generateMockTransactions(config.numTransactions);
 
+    sbmpi::util::ExperimentParameters::record(
+        "total_simulation", config.runID, world_size, config.numShards,
+        config.numTransactions, config.transactionSize, config.seed);
+
     std::vector<std::vector<sbmpi::core::state::Transaction>> partitioned_txs(
         config.numShards);
     for (const auto& tx : all_transactions) {
@@ -238,6 +242,9 @@ int main(int argc, char** argv)
     }
 
     for (int shardId = 0; shardId < config.numShards; ++shardId) {
+      sbmpi::util::ShardMetrics::record("total_simulation", config.runID,
+                                        shardId,
+                                        partitioned_txs[shardId].size());
       // Calculate global rank of Shard Leader
       // Logic: FC takes first N slots. Remaining slots are shards.
       // Shard Pool Size = World - FC.
@@ -277,7 +284,7 @@ int main(int argc, char** argv)
   if (myShard) {
     // This will now internally recv transactions (if leader), run PBFT, and
     // send result
-    myShard->runConsensus();
+    myShard->runConsensus(config.runID);
   }
 
   if (finalCommittee) {
@@ -307,12 +314,16 @@ int main(int argc, char** argv)
       // Pass in previous block info in order to construct prev block
       // information for new block
       sbmpi::core::blocks::MacroBlock macroBlock =
-          finalCommittee->assembleMacroBlock(collectedMicroBlocks,
-                                             blockchain->getLatestBlock());
+          finalCommittee->assembleMacroBlock(
+              collectedMicroBlocks, blockchain->getLatestBlock(), config.runID);
 
       blockchain->addBlock(
           std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
       logger.info("MacroBlock assembled and added to blockchain.");
+
+      sbmpi::util::NodeMetrics::record("total_simulation", config.runID,
+                                       FINAL_COMMITTEE_SIZE,
+                                       collectedMicroBlocks.size(), 1);
     }
   }
 
@@ -324,9 +335,16 @@ int main(int argc, char** argv)
   if (world_rank == 0) {
     timer.stop();
     double elapsed_time = timer.elapsedSeconds();
-    sbmpi::util::Metrics::recordTime("total_simulation", elapsed_time,
-                                     config.numTransactions);
-    sbmpi::util::Metrics::save("metrics.csv");
+    sbmpi::util::SimulationMetrics::record(
+        "total_simulation", config.runID, world_size, config.numShards,
+        config.numTransactions, elapsed_time);
+    sbmpi::util::SimulationMetrics::save("metrics/simulation_metrics.csv");
+    sbmpi::util::ConsensusMetrics::save("metrics/consensus_metrics.csv");
+    sbmpi::util::BlockMetrics::save("metrics/block_metrics.csv");
+    sbmpi::util::NodeMetrics::save("metrics/node_metrics.csv");
+    sbmpi::util::ShardMetrics::save("metrics/shard_metrics.csv");
+    sbmpi::util::ExperimentParameters::save(
+        "metrics/experiment_parameters.csv");
 
     // Print out the current blockchain for a given run
     const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
