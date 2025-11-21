@@ -1,6 +1,7 @@
 /**
  * @file main.cpp
- * @brief Main entry point for the parallelized blockchain computations simulation.
+ * @brief Main entry point for the parallelized blockchain computations
+ * simulation.
  *
  * This program simulates a sharded blockchain network using MPI. It initializes
  * MPI, assigns roles to nodes (Final Committee, Shard Leaders, Shard Members),
@@ -9,9 +10,9 @@
  */
 #include <string.h>
 #include <iostream>
-#include <sstream>
 #include <memory>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include "../include/sbmpi/consensus/pbft.h"
@@ -50,7 +51,8 @@ using namespace sbmpi::network::committee;
  * @param world_size The total number of MPI processes.
  * @param numShards The desired number of shards.
  * @param fc_size The fixed size of the Final Committee.
- * @param shardId_out Output parameter: The assigned shard ID (or unique ID for FC).
+ * @param shardId_out Output parameter: The assigned shard ID (or unique ID for
+ * FC).
  * @param fcLeaderRank_out Output parameter: The global rank of the FC leader.
  * @return The assigned NodeRole for the current process.
  */
@@ -135,8 +137,8 @@ int main(int argc, char** argv)
   std::unique_ptr<sbmpi::network::Shard>                     myShard = nullptr;
   std::unique_ptr<sbmpi::network::committee::FinalCommittee> finalCommittee =
       nullptr;
-  std::unique_ptr<sbmpi::core::Blockchain> blockchain = 
-      std::make_unique<sbmpi::core::Blockchain>(); 
+  std::unique_ptr<sbmpi::core::Blockchain> blockchain =
+      std::make_unique<sbmpi::core::Blockchain>();
 
   // Logger setup
   sbmpi::util::Logger& logger = sbmpi::util::Logger::getLogger();
@@ -164,7 +166,8 @@ int main(int argc, char** argv)
 
   // --- Phase 2: Node Assignment and Communicator Split ---
   // Each node determines its role (Shard Leader, Shard Member, FC Member)
-  // and its shard ID (or FC ID). MPI communicators are split based on these IDs.
+  // and its shard ID (or FC ID). MPI communicators are split based on these
+  // IDs.
   int shard_color;
   int fc_leader_global_rank;
 
@@ -194,7 +197,9 @@ int main(int argc, char** argv)
     myShard = std::make_unique<sbmpi::network::Shard>(
         myNode.getShardId(), shard_comm, fc_leader_global_rank);
 
-  } else if (role == NodeRole::FINAL_COMMITTEE_MEMBER) { // Note: This condition is redundant, but kept as is.
+  } else if (role ==
+             NodeRole::FINAL_COMMITTEE_MEMBER) {  // Note: This condition is
+                                                  // redundant, but kept as is.
     finalCommittee =
         std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm);
   }
@@ -267,7 +272,8 @@ int main(int argc, char** argv)
 
   // --- Phase 5: Parallel Execution ---
   // Shard nodes run their local PBFT consensus to produce microblocks.
-  // Final Committee members collect these microblocks and assemble a macroblock.
+  // Final Committee members collect these microblocks and assemble a
+  // macroblock.
   if (myShard) {
     // This will now internally recv transactions (if leader), run PBFT, and
     // send result
@@ -291,14 +297,19 @@ int main(int argc, char** argv)
 
     // Pass the calculated ranks to collectMicroBlocks
     std::vector<sbmpi::core::blocks::MicroBlock> collectedMicroBlocks;
-    if (world_rank == 0) { // Only the leader needs to receive blocks from shard leaders
-      collectedMicroBlocks = finalCommittee->collectMicroBlocks(shardLeaderRanks);
-      logger.info("Collected all microblocks! Size: " + std::to_string(collectedMicroBlocks.size()));
-      
-      // Pass in previous block info in order to construct prev block information for new block
+    if (world_rank ==
+        0) {  // Only the leader needs to receive blocks from shard leaders
+      collectedMicroBlocks =
+          finalCommittee->collectMicroBlocks(shardLeaderRanks);
+      logger.info("Collected all microblocks! Size: " +
+                  std::to_string(collectedMicroBlocks.size()));
+
+      // Pass in previous block info in order to construct prev block
+      // information for new block
       sbmpi::core::blocks::MacroBlock macroBlock =
-          finalCommittee->assembleMacroBlock(collectedMicroBlocks, blockchain->getLatestBlock());
- 
+          finalCommittee->assembleMacroBlock(collectedMicroBlocks,
+                                             blockchain->getLatestBlock());
+
       blockchain->addBlock(
           std::make_unique<sbmpi::core::blocks::MacroBlock>(macroBlock));
       logger.info("MacroBlock assembled and added to blockchain.");
@@ -318,14 +329,15 @@ int main(int argc, char** argv)
     sbmpi::util::Metrics::save("metrics.csv");
 
     // Print out the current blockchain for a given run
-    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain = 
-      blockchain->getBlockchain();
+    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
+        blockchain->getBlockchain();
     for (size_t bindex = 0; bindex < chain.size(); bindex++) {
       if (chain[bindex]) {
         std::stringstream ss;
-        ss << "[Block " << std::to_string(bindex) 
-        << "] | Hash: " << chain[bindex]->getHash()
-        << " | Number of Transactions: " << std::to_string(chain[bindex]->transactions.size());
+        ss << "[Block " << std::to_string(bindex)
+           << "] | Hash: " << chain[bindex]->getHash()
+           << " | Number of Transactions: "
+           << std::to_string(chain[bindex]->transactions.size());
         logger.info(ss.str());
       }
     }
