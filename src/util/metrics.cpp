@@ -70,17 +70,37 @@ namespace {
     };
     std::vector<ExperimentParametersResult> experiment_parameters_results;
 
+    bool check_if_file_empty(const std::string& filepath) {
+        std::ifstream check_file(filepath);
+        if (check_file.is_open()) {
+            check_file.seekg(0, std::ios::end); // Position cursor at end of text with 0 offset
+            return (check_file.tellg() == 0); // If cursor is still positioned at pos 0, then file is empty
+        }
+        return false;
+    }
+
     void write_header(const std::string& filepath, const std::string& header) {
         std::string dir_path = filepath.substr(0, filepath.find_last_of("/"));
         mkdir(dir_path.c_str(), 0777);
+
         struct stat buffer;
         bool fileExists = (stat(filepath.c_str(), &buffer) == 0);
+
         if (!fileExists) {
             std::ofstream file(filepath, std::ios::out);
             if (file.is_open()) {
                 file << header << std::endl;
             }
+        } else {
+            if (check_if_file_empty(filepath)) { // Only write header if it does not exist already
+                std::ofstream file(filepath, std::ios::out);
+                if (file.is_open()) {
+                    file << header << std::endl;
+                }
+            }
         }
+
+        return;
     }
 }
 
