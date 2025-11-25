@@ -24,9 +24,10 @@
         "*.ipp": "cpp"
     },
     "files.exclude": {
-        "**/.*": true,
-        "build": false,
-        "scripts": true,
-        "block_*.json": true
-    }
+        "**/.git": true,
+        "**/.cache": true,
+        // "scripts": true,
+        // "block_*.json": true
+    },
+    "editor.codeActionsOnSave": {}
 }

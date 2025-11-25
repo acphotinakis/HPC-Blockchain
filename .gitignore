@@ -2,11 +2,9 @@
 *.o
 *.out
 
-
 # Local environment files
 .DS_Store
 *.swp
-
 
 build/
 .cache/
