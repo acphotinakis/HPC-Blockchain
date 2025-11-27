@@ -8,18 +8,125 @@
  */
 #include "../../include/sbmpi/util/crypto.h"
 #include <openssl/evp.h>  // Use EVP header instead of sha.h
+#include <openssl/rand.h>
+#include "secp256k1.h"
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <array>
 #include "../../include/sbmpi/core/state/transaction.h"
 
 namespace sbmpi
 {
   namespace util
   {
+
+    /**
+    * @brief Converts a byte array into a hexadecimal string.
+    * @param data Pointer to the byte array to convert.
+    * @param len Length of the byte array.
+    * @return Hexadecimal representation of the input data as a string.
+    */
+    std::string toHex(const unsigned char* data, size_t len) {
+        std::ostringstream ss;
+        ss << std::hex << std::setfill('0');
+        for (size_t i = 0; i < len; i++)
+            ss << std::setw(2) << (int)data[i];
+        return ss.str();
+    }
+
+    /**
+    * @brief Generates a new random 32-byte Ethereum private key.
+    * 
+    * Uses OpenSSL's RAND_bytes to generate secure random bytes.
+    * @return An array of 32 unsigned char representing the generated private key.
+    */
+    std::array<unsigned char, 32> generatePrivateKey() {
+      // Write a random number of 32 bytes to a std::array
+      std::array<unsigned char, 32> bytes{};
+      RAND_bytes(bytes.data(), bytes.size());
+      return bytes;
+    }
+
+    /**
+    * @brief Derives the uncompressed public key from a given private key.
+    * 
+    * Uses secp256k1 (from the downloaded source) to compute the corresponding 
+    * public key. The resulting public key is serialized in uncompressed format 
+    * (65 bytes, starting with 0x04, indicating an uncompressed key).
+    * @param privateKey A 32-byte Ethereum private key.
+    * @return The serialized uncompressed public key.
+    * @throws std::runtime_error If the private key is invalid.
+    */
+    std::vector<unsigned char> derivePublicKey(std::array<unsigned char, 32> privateKey) {
+      // Inititalize the crypto context using secp256k1
+      secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+
+      secp256k1_pubkey publicKey;
+      if (!secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey.data())) {
+        throw std::runtime_error("Invalid private key");
+      }
+
+      // First bytes to denote uncompressed key, next 32 bytes for x-coord in elliptic key cryptography,
+      // last 32 bytes for the y-coord.
+      size_t publicKeyLen = 65; 
+      std::vector<unsigned char> publicKeySerialized(publicKeyLen);
+      secp256k1_ec_pubkey_serialize(
+          ctx,
+          publicKeySerialized.data(),
+          &publicKeyLen,
+          &publicKey,
+          SECP256K1_EC_UNCOMPRESSED
+      );
+      secp256k1_context_destroy(ctx);
+
+      return publicKeySerialized;
+    }
+
+    /**
+    * @brief Computes the Keccak-256 (SHA3-256) hash of the given data.
+    * 
+    * Uses OpenSSL EVP to compute the hash.
+    * @param data Pointer to the input data.
+    * @param len Length of the input data in bytes.
+    * @return The 32-byte Keccak-256 (SHA3-256) hash.
+    * @throws std::runtime_error If the hash length is not 32 bytes.
+    */
+    std::array<unsigned char, 32> keccak256(const unsigned char* data, size_t len) {
+        std::array<unsigned char, 32> hash{};
+        unsigned int lengthOfHash = 0;
+        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+
+        if (ctx != nullptr) {
+          if (EVP_DigestInit_ex(ctx, EVP_sha3_256(), nullptr)) {
+            if (EVP_DigestUpdate(ctx, data, len) == 1) {
+              EVP_DigestFinal_ex(ctx, hash.data(), &lengthOfHash);
+            }
+          }
+          EVP_MD_CTX_free(ctx);
+        }
+
+        if (lengthOfHash != hash.size())
+            throw std::runtime_error("Unexpected hash length");
+
+        return hash;
+    }
+
+    /**
+    * @brief Derives an Ethereum address from a given uncompressed public key.
+    * 
+    * The address is the last 20 bytes of the Keccak-256 (SHA3-256) hash of the public key
+    * (excluding the 0x04 prefix).
+    * @param publicKey Serialized uncompressed public key (65 bytes, starting with 0x04).
+    * @return The derived Ethereum hexadecimal address.
+    */
+    std::string deriveAddress(const std::vector<unsigned char>& publicKey) {
+        auto hash = keccak256(publicKey.data() + 1, publicKey.size() - 1); // skip 0x04
+        return toHex(hash.data() + 12, 20); // last 20 bytes
+    }
 
     /**
      * @brief Computes the SHA-256 hash of a given string.
@@ -42,11 +149,7 @@ namespace sbmpi
         EVP_MD_CTX_free(context);
       }
 
-      std::stringstream ss;
-      for (unsigned int i = 0; i < lengthOfHash; ++i) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-      }
-      return ss.str();
+      return toHex(hash, lengthOfHash);
     }
 
     /**
