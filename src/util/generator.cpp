@@ -6,13 +6,60 @@
 #include <algorithm>  // For std::min
 #include <iomanip>    // For std::setw, std::fixed, std::setprecision
 #include <iostream>
+#include <filesystem>
+#include <sys/stat.h>
+#include <cassert>
+#include <fstream>
 #include <random>
 #include <string>
+
+static const std::string POOLDIR{"pools/"};
 
 namespace sbmpi
 {
   namespace util
   {
+    std::vector<sbmpi::core::state::Wallet> generateMockWallets(size_t count) {
+      std::vector<sbmpi::core::state::Wallet> wallets;
+      wallets.reserve(count);
+
+      for (size_t i = 0; i < count; i++) {
+        sbmpi::core::state::Wallet newWallet;
+        wallets.push_back(newWallet);
+      }
+
+      return wallets;
+    }
+
+    void writeWalletAddresses(const std::string& filename, std::vector<sbmpi::core::state::Wallet> wallets) {
+      std::cout << "Writing file to: " 
+          << std::filesystem::absolute(POOLDIR + filename)
+          << std::endl;
+      
+      // Check if directory already exists, gracefully continues
+      mkdir(POOLDIR.c_str(), 0777);
+
+      std::ofstream walletPool(POOLDIR + filename, std::ios::trunc);
+      //walletPool.open();
+      if (walletPool.is_open()) {
+        walletPool << "{\n\t\"wallets\": [\n";
+        for (size_t i = 0; i < wallets.size(); i++) {
+          walletPool << "\t\t{"
+                     << "\n\t\t\t\"publicKey\": \"" << wallets[i].publicKeyHex << "\","
+                     << "\n\t\t\t\"privateKey\": \"" << wallets[i].privateKeyHex << "\","
+                     << "\n\t\t\t\"address\": \"" << wallets[i].address << "\""
+                     << "\n\t\t}";
+          
+          if (i + 1 != wallets.size()) {
+            walletPool << ",";
+          }
+          walletPool << "\n";
+        }
+
+        walletPool << "\t]\n}";
+        walletPool.close();
+      }
+    }
 
     /**
      * @brief Generates a specified number of mock transactions.

@@ -29,10 +29,10 @@ CXX := mpic++
 # -Wall -Wextra: Enable all useful warnings.
 # -Iinclude:  Tell the compiler where to find our headers (e.g., "sbmpi/core/node.h").
 # -MMD -MP:   Generate dependency files (.d) for automatic header tracking.
-CXXFLAGS := -std=c++17 -g -Wall -Wextra -Iinclude -MMD -MP
+CXXFLAGS := -std=c++17 -g -Wall -Wextra -Iinclude -MMD -MP -Isecp256k1/include
 
 # Linker Flags: (MPI wrapper handles most linking)
-LDFLAGS :=
+LDFLAGS := secp256k1/local/lib/libsecp256k1.a -lcrypto
 
 # --- Directories ---
 BUILD_DIR   := build
@@ -86,7 +86,7 @@ all: $(TARGET)
 $(TARGET): $(MAIN_OBJ) $(LIB_OBJS)
 	@echo "Linking main target: $@"
 	@mkdir -p $(@D) # Ensure the 'build' directory exists
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -lcrypto
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Pattern rule to compile .cpp files from 'src' into .o files in 'build/obj'
 # This rule handles all our main and library source files.

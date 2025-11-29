@@ -19,6 +19,7 @@
 #include "../include/sbmpi/core/blockchain.h"
 #include "../include/sbmpi/core/node.h"
 #include "../include/sbmpi/core/state/transaction.h"
+#include "../include/sbmpi/core/state/wallet.h"
 #include "../include/sbmpi/network/committee/final_committee.h"
 #include "../include/sbmpi/network/mpi_wrapper.h"
 #include "../include/sbmpi/network/shard.h"
@@ -216,8 +217,13 @@ int main(int argc, char** argv)
   sbmpi::util::Timer timer;
 
   if (world_rank == 0) {
-    logger.info("Generating and distributing transactions...");
+    logger.info("Generating wallets and distributing transactions...");
     timer.start();
+
+    // Create a vector containing 50 wallets, all with unique hexcodes
+    std::vector<sbmpi::core::state::Wallet> allWallets = 
+        sbmpi::util::generateMockWallets(50); // Temp wallet count
+    sbmpi::util::writeWalletAddresses("wallets.json", allWallets);
 
     std::vector<sbmpi::core::state::Transaction> all_transactions =
         sbmpi::util::generateMockTransactions(config.numTransactions);

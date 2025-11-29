@@ -3,12 +3,14 @@
 
 #include <vector>
 #include "../core/state/transaction.h"
+#include "../core/state/wallet.h"
 
 namespace sbmpi
 {
   namespace util
   {
-
+    std::vector<sbmpi::core::state::Wallet> generateMockWallets(size_t count);
+    void writeWalletAddresses(const std::string& filename, std::vector<sbmpi::core::state::Wallet> wallets);
     /**
      * @brief Generates a deterministic set of mock transactions.
      * * This function uses a fixed random seed to ensure that the workload
