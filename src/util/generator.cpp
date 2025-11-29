@@ -3,6 +3,7 @@
  * @brief Implements utility functions for generating mock data, specifically transactions.
  */
 #include "../../include/sbmpi/util/generator.h"
+#include "../../include/sbmpi/util/logging.h"
 #include <algorithm>  // For std::min
 #include <iomanip>    // For std::setw, std::fixed, std::setprecision
 #include <iostream>
@@ -19,28 +20,57 @@ namespace sbmpi
 {
   namespace util
   {
+    /**
+     * @brief Generates a specified number of `Wallet` objects.
+
+     * Returns a collection of populated `Wallet` objects, each with their "publicKey",
+     * "privateKey", and "address" member variables populated. The values are all random
+     * which is standard for most cryptocurrency implementations.
+     * @param count Specifies how many `Wallet` instances to instantiate.
+     * @return A std::vector containing popluated `Wallet` instances.
+     */
     std::vector<sbmpi::core::state::Wallet> generateMockWallets(size_t count) {
       std::vector<sbmpi::core::state::Wallet> wallets;
       wallets.reserve(count);
 
       for (size_t i = 0; i < count; i++) {
-        sbmpi::core::state::Wallet newWallet;
+        sbmpi::core::state::Wallet newWallet; // Constructor populates member variables
         wallets.push_back(newWallet);
       }
 
       return wallets;
     }
 
+    /**
+     * @brief Writes a collection of `Wallet` object data to a specified JSON file.
+     *
+     * The method needs to receive a file name with a .json extension or the method will
+     * not output. If the file name is valid, then the method iterates through the collection
+     * of `Wallet` objects and creates a collection of JSON objects that contain a: "publicKey",
+     * "privateKey", and "address" string.
+     * @param filename A correct JSON filename.
+     * @param wallets A vector instance containing populated `Wallet` objects.
+     */
     void writeWalletAddresses(const std::string& filename, std::vector<sbmpi::core::state::Wallet> wallets) {
-      std::cout << "Writing file to: " 
-          << std::filesystem::absolute(POOLDIR + filename)
-          << std::endl;
+      // Check if the filename is large enough to hold .json extension
+      if (filename.size() <= 5) {
+        sbmpi::util::Logger::getLogger().error("Filename length is incorrect!");
+        return;
+      }
+
+      // See if the filename includes .json extension
+      int fileExtIndex = filename.find_last_of(".");
+      std::string fileExtension = filename.substr(fileExtIndex, filename.size());
+      if (fileExtension.compare(".json") != 0) {
+        sbmpi::util::Logger::getLogger().error("Wallet file extension is not \'.json\'!");
+        return;
+      }
       
-      // Check if directory already exists, gracefully continues
+      // Check if directory already exists, then gracefully continue
       mkdir(POOLDIR.c_str(), 0777);
 
+      // Open in truncate mode, overwrite old run wallets
       std::ofstream walletPool(POOLDIR + filename, std::ios::trunc);
-      //walletPool.open();
       if (walletPool.is_open()) {
         walletPool << "{\n\t\"wallets\": [\n";
         for (size_t i = 0; i < wallets.size(); i++) {
@@ -50,6 +80,7 @@ namespace sbmpi
                      << "\n\t\t\t\"address\": \"" << wallets[i].address << "\""
                      << "\n\t\t}";
           
+          // If last item, then don't create a trailing comma
           if (i + 1 != wallets.size()) {
             walletPool << ",";
           }

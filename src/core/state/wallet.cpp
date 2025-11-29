@@ -11,6 +11,12 @@ namespace sbmpi
     {
         namespace state 
         {
+            /**
+             * @brief Constructs a new Wallet object.
+             *
+             * Generates a unique private key, public key, and address under
+             * an Ethereum format.
+             */
             Wallet::Wallet() {
                 privateKeyRaw = util::generatePrivateKey();
                 privateKeyHex = util::toHex(privateKeyRaw.data(), 32);
