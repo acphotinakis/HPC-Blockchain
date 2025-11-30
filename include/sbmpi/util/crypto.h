@@ -9,13 +9,16 @@
 namespace sbmpi {
 namespace util {
 
-std::string toHex(const unsigned char* data, size_t len);
-std::array<unsigned char, 32> generatePrivateKey();
-std::vector<unsigned char> derivePublicKey(std::array<unsigned char, 32> privateKey);
-std::array<unsigned char, 32> keccak256(const unsigned char* data, size_t len);
-std::string deriveAddress(const std::vector<unsigned char>& pubkey);
+const static size_t KEYLEN = 32;
+
+std::string toHex(const std::vector<unsigned char>& data);
+std::vector<unsigned char> generatePrivateKey();
+std::vector<unsigned char> derivePublicKey(const std::vector<unsigned char>& privateKey);
+std::vector<unsigned char> keccak256(const std::vector<unsigned char>& data);
+std::string deriveAddress(const std::vector<unsigned char>& publicKey);
+std::string recoverAddress(const std::vector<unsigned char>& signature, const std::vector<unsigned char>& hash);
 std::string sha256(const std::string& data);
-std::string sign(const std::string& data, const std::string& privateKey);
+std::vector<unsigned char> sign(const std::vector<unsigned char>& hash, const std::vector<unsigned char>& privateKey);
 bool verify(const std::string& data, const std::string& signature,
             const std::string& publicKey);
 std::string merkle(const std::vector<core::state::Transaction>& transactions);

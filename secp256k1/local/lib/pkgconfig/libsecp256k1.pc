@@ -1,4 +1,4 @@
-prefix=/home/spring2022/cjt7922/parallelizing-blockchain-computations/secp256k1-master/local
+prefix=/home/spring2022/cjt7922/parallelizing-blockchain-computations/secp256k1/local
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include

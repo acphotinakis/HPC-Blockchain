@@ -27,14 +27,20 @@ namespace sbmpi
        public:
         // Unique identifier for the transaction
         std::string id;
+        // Identifier as 32 raw bytes
+        std::vector<unsigned char> rawId;
         // Address of the sender
         std::string from;
         // Address of the receiver
         std::string to;
         // Amount to be transferred
         double amount;
+        // Time transaction was made
+        int64_t time;
         // Cryptographic signature of the transaction data
         std::string signature;
+        // Raw signature 65 bytes (r[32],s[32]) + 1 bytes for recovery number
+        std::vector<unsigned char> signatureRaw;
 
         /**
          * @brief Default constructor for Transaction.
@@ -51,6 +57,8 @@ namespace sbmpi
         Transaction(const std::string& from, const std::string& to,
                     double amount);
 
+        std::vector<unsigned char> constructHash() const;
+
         /**
          * @brief Signs the transaction with a private key.
          *
@@ -61,7 +69,7 @@ namespace sbmpi
          *
          * @param privateKey The private key of the sender.
          */
-        void sign(const std::string& privateKey);
+        void sign(const std::vector<unsigned char>& privateKey);
 
         /**
          * @brief Verifies the transaction's signature.

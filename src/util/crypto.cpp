@@ -10,6 +10,7 @@
 #include <openssl/evp.h>  // Use EVP header instead of sha.h
 #include <openssl/rand.h>
 #include "secp256k1.h"
+#include "secp256k1_recovery.h"
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -23,18 +24,17 @@ namespace sbmpi
 {
   namespace util
   {
-
     /**
     * @brief Converts a byte array into a hexadecimal string.
     * @param data Pointer to the byte array to convert.
     * @param len Length of the byte array.
     * @return Hexadecimal representation of the input data as a string.
     */
-    std::string toHex(const unsigned char* data, size_t len) {
+    std::string toHex(const std::vector<unsigned char>& data) {
         std::ostringstream ss;
         ss << std::hex << std::setfill('0');
-        for (size_t i = 0; i < len; i++)
-            ss << std::setw(2) << (int)data[i];
+        for (size_t i = 0; i < data.size(); i++)
+            ss << std::setw(2) << (int)data.at(i);
         return ss.str();
     }
 
@@ -44,10 +44,11 @@ namespace sbmpi
     * Uses OpenSSL's RAND_bytes to generate secure random bytes.
     * @return An array of 32 unsigned char representing the generated private key.
     */
-    std::array<unsigned char, 32> generatePrivateKey() {
-      // Write a random number of 32 bytes to a std::array
-      std::array<unsigned char, 32> bytes{};
-      RAND_bytes(bytes.data(), bytes.size());
+    std::vector<unsigned char> generatePrivateKey() {
+      std::vector<unsigned char> bytes(KEYLEN);
+      if (RAND_bytes(bytes.data(), bytes.size()) != 1) {
+          throw std::runtime_error("[CRYPTO]: Failed to generate secure private key!");
+      }
       return bytes;
     }
 
@@ -61,7 +62,7 @@ namespace sbmpi
     * @return The serialized uncompressed public key.
     * @throws std::runtime_error If the private key is invalid.
     */
-    std::vector<unsigned char> derivePublicKey(std::array<unsigned char, 32> privateKey) {
+    std::vector<unsigned char> derivePublicKey(const std::vector<unsigned char>& privateKey) {
       // Inititalize the crypto context using secp256k1
       secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
 
@@ -72,7 +73,7 @@ namespace sbmpi
 
       // First bytes to denote uncompressed key, next 32 bytes for x-coord in elliptic key cryptography,
       // last 32 bytes for the y-coord.
-      size_t publicKeyLen = 65; 
+      size_t publicKeyLen = (KEYLEN*2) + 1; 
       std::vector<unsigned char> publicKeySerialized(publicKeyLen);
       secp256k1_ec_pubkey_serialize(
           ctx,
@@ -95,14 +96,14 @@ namespace sbmpi
     * @return The 32-byte Keccak-256 (SHA3-256) hash.
     * @throws std::runtime_error If the hash length is not 32 bytes.
     */
-    std::array<unsigned char, 32> keccak256(const unsigned char* data, size_t len) {
-        std::array<unsigned char, 32> hash{};
+    std::vector<unsigned char> keccak256(const std::vector<unsigned char>& data) {
+        std::vector<unsigned char> hash(KEYLEN);
         unsigned int lengthOfHash = 0;
         EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
         if (ctx != nullptr) {
           if (EVP_DigestInit_ex(ctx, EVP_sha3_256(), nullptr)) {
-            if (EVP_DigestUpdate(ctx, data, len) == 1) {
+            if (EVP_DigestUpdate(ctx, data.data(), data.size()) == 1) {
               EVP_DigestFinal_ex(ctx, hash.data(), &lengthOfHash);
             }
           }
@@ -124,8 +125,62 @@ namespace sbmpi
     * @return The derived Ethereum hexadecimal address.
     */
     std::string deriveAddress(const std::vector<unsigned char>& publicKey) {
-        auto hash = keccak256(publicKey.data() + 1, publicKey.size() - 1); // skip 0x04
-        return toHex(hash.data() + 12, 20); // last 20 bytes
+      // Copy the public key into stack buffer
+      unsigned char hashBuffer[(KEYLEN*2) + 1];
+      std::copy(publicKey.begin(), publicKey.end(), hashBuffer);
+
+      // Convert slice (skip 0x04) into a vector
+      std::vector<unsigned char> pubSlice(hashBuffer + 1, hashBuffer + publicKey.size());
+
+      // Hash the 64-byte (x||y)
+      auto hash = keccak256(pubSlice);
+
+      // FIX: Extract last 20 bytes from the HASH, not from hashBuffer
+      std::vector<unsigned char> last20(hash.end() - 20, hash.end());
+      
+      return toHex(last20);
+    }
+
+    std::string recoverAddress(
+      const std::vector<unsigned char>& signature, const std::vector<unsigned char>& hash
+    ) {
+      // Create a SECP256k1 verification context
+      secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+
+      // Extract our X||Y streams
+      std::vector<unsigned char> recoveryHash(signature.begin(), signature.end() - 1);
+      int recoveryId = static_cast<int>(signature.back());
+
+      secp256k1_ecdsa_recoverable_signature sig;
+      if (!secp256k1_ecdsa_recoverable_signature_parse_compact(
+        ctx, &sig, recoveryHash.data(), recoveryId
+      )) {
+        secp256k1_context_destroy(ctx);
+        throw std::runtime_error("[CRYPTO]: Could not parse recoverable signature!");
+      }
+
+      secp256k1_pubkey publicKey;
+      if (!secp256k1_ecdsa_recover(
+        ctx, &publicKey, &sig, hash.data()
+      )) {
+        secp256k1_context_destroy(ctx);
+        throw std::runtime_error("[CRYPTO]: Could not recover public key from signature!");
+      }
+
+      size_t publicKeyLen = (KEYLEN*2) + 1;
+      unsigned char publicKeySerialized[publicKeyLen];
+      secp256k1_ec_pubkey_serialize(
+        ctx, 
+        publicKeySerialized, 
+        &publicKeyLen, 
+        &publicKey, 
+        SECP256K1_EC_UNCOMPRESSED
+      );
+
+      std::vector<unsigned char> publicKeySlice(publicKeySerialized + 1, publicKeySerialized + publicKeyLen);
+      std::vector<unsigned char> recoveredHash = keccak256(publicKeySlice);
+      std::vector<unsigned char> address(recoveredHash.end() - 20, recoveredHash.end());
+      return toHex(address);
     }
 
     /**
@@ -149,7 +204,14 @@ namespace sbmpi
         EVP_MD_CTX_free(context);
       }
 
-      return toHex(hash, lengthOfHash);
+      // Using vector to maintain standard
+      std::vector<unsigned char> hashVector;
+      hashVector.reserve(lengthOfHash);
+      for (unsigned char c: hash) {
+        hashVector.push_back(c);
+      }
+
+      return toHex(hashVector);
     }
 
     /**
@@ -162,10 +224,40 @@ namespace sbmpi
      * @param privateKey The private key used for signing.
      * @return A std::string representing the dummy signature.
      */
-    std::string sign(const std::string& data, const std::string& privateKey)
+    std::vector<unsigned char> sign(const std::vector<unsigned char>& hash, 
+      const std::vector<unsigned char>& privateKey)
     {
-      // Dummy implementation: Signature = SHA256(Data + PrivateKey)
-      return sha256(data + privateKey);
+      if (privateKey.size() != KEYLEN) {
+        throw std::runtime_error("Private key size is not of correct length!");
+      }
+
+      secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+
+      // We want to be able to recover the public key during verification
+      secp256k1_ecdsa_recoverable_signature sig;
+      if (!secp256k1_ecdsa_sign_recoverable(
+        ctx, &sig, 
+        hash.data(), privateKey.data(),
+        nullptr, nullptr
+      )) {
+        secp256k1_context_destroy(ctx);
+        throw std::runtime_error("[CRYPTO]: Failed to sign transaction");
+      }
+
+      unsigned char sigCompact[KEYLEN*2];
+      int recoveryId;
+      if (!secp256k1_ecdsa_recoverable_signature_serialize_compact(
+        ctx, sigCompact, &recoveryId, &sig
+      )) {
+        secp256k1_context_destroy(ctx);
+        throw std::runtime_error("[CRYPTO]: Failed to compact signature!");
+      }
+
+      secp256k1_context_destroy(ctx);
+
+      std::vector<unsigned char> signature(sigCompact, sigCompact + (KEYLEN*2));
+      signature.push_back(static_cast<unsigned char>(recoveryId));
+      return signature;
     }
 
     /**

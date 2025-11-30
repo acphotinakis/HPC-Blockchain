@@ -19,10 +19,10 @@ namespace sbmpi
              */
             Wallet::Wallet() {
                 privateKeyRaw = util::generatePrivateKey();
-                privateKeyHex = util::toHex(privateKeyRaw.data(), 32);
+                privateKeyHex = util::toHex(privateKeyRaw);
 
                 publicKeyRaw = util::derivePublicKey(privateKeyRaw);
-                publicKeyHex = util::toHex(publicKeyRaw.data(), publicKeyRaw.size());
+                publicKeyHex = util::toHex(publicKeyRaw);
 
                 address = util::deriveAddress(publicKeyRaw);
             }

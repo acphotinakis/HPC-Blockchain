@@ -225,8 +225,14 @@ int main(int argc, char** argv)
         sbmpi::util::generateMockWallets(50); // Temp wallet count
     sbmpi::util::writeWalletAddresses("wallets.json", allWallets);
 
+    for (const auto& w : allWallets) {
+      std::cout << "Wallet private key size: " << w.privateKeyRaw.size() 
+                << ", public key size: " << w.publicKeyRaw.size() 
+                << ", address: " << w.address << std::endl;
+    }
+
     std::vector<sbmpi::core::state::Transaction> all_transactions =
-        sbmpi::util::generateMockTransactions(config.numTransactions);
+        sbmpi::util::generateMockTransactions(config.numTransactions, allWallets);
 
     sbmpi::util::ExperimentParameters::record(
         "total_simulation", config.runID, world_size, config.numShards,

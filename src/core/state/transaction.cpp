@@ -7,9 +7,12 @@
 #include <chrono>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <iostream>
 
 #include "../../../include/sbmpi/util/crypto.h"
 #include "../../../include/sbmpi/util/serialization.h"
+#include "../../../include/sbmpi/util/logging.h"
 
 namespace sbmpi
 {
@@ -38,10 +41,23 @@ namespace sbmpi
                                double amount)
           : from(from), to(to), amount(amount)
       {
+        time = std::chrono::system_clock::now().time_since_epoch().count();
+        
+        rawId = constructHash();
+        if (rawId.size() != util::KEYLEN) {
+          throw std::runtime_error("ID is not of correct length!");
+        }
+        id = util::toHex(rawId);
+      }
+
+      std::vector<unsigned char> Transaction::constructHash() const {
         std::stringstream ss;
-        ss << from << to << amount
-           << std::chrono::system_clock::now().time_since_epoch().count();
-        id = util::sha256(ss.str());
+        ss << from << to << amount << time;
+        // Set the ID to the Keccak256 hash
+        std::string hashStr = ss.str();
+        std::vector<unsigned char> hashBytes(hashStr.begin(), hashStr.end());
+
+        return util::keccak256(hashBytes);
       }
 
       /**
@@ -51,10 +67,13 @@ namespace sbmpi
        * (Note: This is a simplified simulation of signing for demonstration purposes).
        * @param privateKey The private key used to sign the transaction.
        */
-      void Transaction::sign(const std::string& privateKey)
+      void Transaction::sign(const std::vector<unsigned char>& privateKey)
       {
-        std::string data = from + to + std::to_string(amount);
-        signature = util::sign(data, privateKey);
+        signatureRaw = util::sign(rawId, privateKey);
+
+        if (signatureRaw.empty() || signatureRaw.size() != (util::KEYLEN * 2) + 1) {
+          throw std::runtime_error("[CRYPTO]: Signature is empty or incorrect size!");
+        }
       }
 
       /**
@@ -66,9 +85,44 @@ namespace sbmpi
        */
       bool Transaction::verify() const
       {
-        std::string data = from + to + std::to_string(amount);
-        // Assumes the 'from' address is the public key for dummy verification
-        return util::verify(data, signature, from);
+        // Check if our addresses are populated
+        if (from.empty() || to.empty()) {
+          util::Logger::getLogger().error("Empty from and two.");
+          return false;
+        }
+
+        if (signatureRaw.empty()) {
+          util::Logger::getLogger().error("Empty signature.");  
+          return false;
+        }
+
+        if (rawId.empty()) {
+          util::Logger::getLogger().error("Empty ID.");  
+          return false;
+        }
+
+        // Check the signature and ID hash are correct lengths
+        if (signatureRaw.size() < ((util::KEYLEN*2) + 1) || rawId.size() < util::KEYLEN) {
+          util::Logger::getLogger().error("Incorrect key lengths.");  
+          return false;
+        }
+
+        std::vector<unsigned char> verificationHash(32);
+        verificationHash = constructHash();
+
+        // Vectors are first compared by length, then by sequence
+        if (verificationHash != rawId) {
+          util::Logger::getLogger().error("ID hashes do not match.");
+          return false;
+        }
+  
+        std::string recoveredAddress = util::recoverAddress(signatureRaw, verificationHash);
+        if (recoveredAddress != from) {
+          util::Logger::getLogger().error("Mistmatching addresses.");
+          return false;
+        }
+
+        return true;
       }
 
       /**
@@ -81,10 +135,13 @@ namespace sbmpi
       {
         std::vector<char> buffer;
         util::pack(id, buffer);
+        util::pack(rawId, buffer);
         util::pack(from, buffer);
         util::pack(to, buffer);
         util::pack(amount, buffer);
+        util::pack_int64(time, buffer);
         util::pack(signature, buffer);
+        util::pack(signatureRaw, buffer);
         return buffer;
       }
 
@@ -98,10 +155,13 @@ namespace sbmpi
       {
         int offset = 0;
         id = util::unpack_string(data, offset);
+        rawId = util::unpack_vector_unsigned_char(data, offset);
         from = util::unpack_string(data, offset);
         to = util::unpack_string(data, offset);
         amount = util::unpack_double(data, offset);
+        time = util::unpack_int64_t(data, offset);
         signature = util::unpack_string(data, offset);
+        signatureRaw = util::unpack_vector_unsigned_char(data, offset);
       }
 
     } // namespace state

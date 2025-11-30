@@ -105,7 +105,7 @@ namespace sbmpi
      * @return A std::vector of generated core::state::Transaction objects.
      */
     std::vector<sbmpi::core::state::Transaction> generateMockTransactions(
-        size_t count)
+        size_t count, std::vector<sbmpi::core::state::Wallet> wallets)
     {
       std::vector<sbmpi::core::state::Transaction> transactions;
       transactions.reserve(count);
@@ -115,32 +115,41 @@ namespace sbmpi
       std::mt19937 gen(42);
 
       // Simulate a pool of 10,000 unique users
-      std::uniform_int_distribution<> userDist(1, 10000);
+      std::uniform_int_distribution<> userDist(1, wallets.size());
       // Random transaction amounts between 0.01 and 1000.00
       std::uniform_real_distribution<> amountDist(0.01, 1000.0);
 
       for (size_t i = 0; i < count; ++i) {
         // Generate Sender
-        std::string sender = "user_" + std::to_string(userDist(gen));
+        sbmpi::core::state::Wallet senderWallet = wallets.at(userDist(gen) - 1);
+        std::string senderAddress = senderWallet.address;
+        //std::string sender = "user_" + std::to_string(userDist(gen));
 
         // Generate Receiver (ensure it is different from sender)
-        std::string receiver;
+        sbmpi::core::state::Wallet receiverWallet;
+        std::string receiverAddress;
         do {
-          receiver = "user_" + std::to_string(userDist(gen));
-        } while (sender == receiver);
+          //receiver = "user_" + std::to_string(userDist(gen));
+          receiverWallet = wallets.at(userDist(gen) - 1);
+          receiverAddress = receiverWallet.address;
+        } while (senderAddress == receiverAddress);
 
         double amount = amountDist(gen);
 
         // Instantiate the Transaction
-        sbmpi::core::state::Transaction tx(sender, receiver, amount);
+        sbmpi::core::state::Transaction tx(senderAddress, receiverAddress, amount);
 
         // Assign a unique, deterministic ID
-        tx.id = std::to_string(i);
+        //tx.id = std::to_string(i); ID is already generated in constructor
 
         // Sign the transaction
         // Note: The signature here is simulated for the purpose of the mock
         // data.
-        tx.sign("private_key_" + sender);
+        if (senderWallet.privateKeyRaw.empty()) {
+          throw std::runtime_error("Empty private key!");
+        }
+
+        tx.sign(senderWallet.privateKeyRaw);
 
         transactions.push_back(tx);
       }

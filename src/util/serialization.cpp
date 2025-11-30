@@ -7,6 +7,7 @@
  */
 #include "../../include/sbmpi/util/serialization.h"
 #include <cstring>
+#include <stdexcept>
 
 namespace sbmpi
 {
@@ -22,6 +23,12 @@ namespace sbmpi
     {
       const char* bytes = reinterpret_cast<const char*>(&value);
       buffer.insert(buffer.end(), bytes, bytes + sizeof(int));
+    }
+
+    void pack_int64(int64_t value, std::vector<char>& buffer)
+    {
+      const char* bytes = reinterpret_cast<const char*>(&value);
+      buffer.insert(buffer.end(), bytes, bytes + sizeof(int64_t));
     }
 
     /**
@@ -49,6 +56,13 @@ namespace sbmpi
       buffer.insert(buffer.end(), value.begin(), value.end());
     }
 
+    void pack(const std::vector<unsigned char>& value, std::vector<char>& buffer)
+    {
+        int len = value.size();
+        pack(len, buffer);
+        buffer.insert(buffer.end(), value.begin(), value.end());
+    }
+
     /**
      * @brief Unpacks an integer value from a character vector buffer.
      * @param buffer The std::vector<char> buffer to unpack from.
@@ -61,6 +75,18 @@ namespace sbmpi
       std::memcpy(&value, buffer.data() + offset, sizeof(int));
       offset += sizeof(int);
       return value;
+    }
+
+    int64_t unpack_int64_t(const std::vector<char>& buffer, int& offset)
+    {
+        int64_t value;
+        if (offset + sizeof(int64_t) > buffer.size()) {
+            throw std::runtime_error("Not enough data to unpack int64_t");
+        }
+        
+        std::memcpy(&value, &buffer[offset], sizeof(int64_t));
+        offset += sizeof(int64_t);
+        return value;
     }
 
     /**
@@ -91,6 +117,18 @@ namespace sbmpi
       std::string value(buffer.data() + offset, len);
       offset += len;
       return value;
+    }
+
+    std::vector<unsigned char> unpack_vector_unsigned_char(const std::vector<char>& buffer, int& offset)
+    {
+        int len = unpack_int(buffer, offset);
+        std::vector<unsigned char> result;
+        result.reserve(len);
+        
+        for (int i = 0; i < len; ++i) {
+            result.push_back(static_cast<unsigned char>(buffer[offset++]));
+        }
+        return result;
     }
 
   } // namespace util

@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/home/spring2022/cjt7922/parallelizing-blockchain-computations/secp256k1-master/local/lib'
+libdir='/usr/local/lib'

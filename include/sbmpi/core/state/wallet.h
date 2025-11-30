@@ -17,7 +17,7 @@ namespace sbmpi
                     std::vector<unsigned char> publicKeyRaw;
                     std::string publicKeyHex;
 
-                    std::array<unsigned char, 32> privateKeyRaw;
+                    std::vector<unsigned char> privateKeyRaw;
                     std::string privateKeyHex;
                     
                     std::string address;
