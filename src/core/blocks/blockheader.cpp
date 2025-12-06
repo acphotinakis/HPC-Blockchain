@@ -18,24 +18,6 @@ namespace sbmpi
   {
     namespace blocks
     {
-
-      /**
-       * @brief Converts a byte array to its hexadecimal string representation.
-       * @param data Pointer to the unsigned char array.
-       * @param len The length of the byte array.
-       * @return A std::string containing the hexadecimal representation.
-       */
-      static std::string toHex(const unsigned char* data, std::size_t len)
-      {
-        std::ostringstream oss;
-        oss << std::hex << std::setfill('0');
-
-        for (std::size_t i = 0; i < len; ++i)
-          oss << std::setw(2) << static_cast<int>(data[i]);
-
-        return oss.str();
-      }
-
       /**
        * @brief Default constructor for BlockHeader.
        * Initializes height to 0, previousHash and merkleRoot to empty strings,
@@ -65,12 +47,12 @@ namespace sbmpi
       }
 
       /**
-       * @brief Calculates the SHA-256 cryptographic hash of the block header.
+       * @brief Calculates the Keccak-256 cryptographic hash of the block header.
        *
        * The hash is computed by concatenating the block's height, previous hash,
        * Merkle root, and timestamp (in milliseconds) into a single string and
-       * then applying SHA-256.
-       * @return A std::string representing the SHA-256 hash of the block header.
+       * then applying Keccak-256.
+       * @return A std::string representing the Keccak-256 hash of the block header.
        */
       std::string BlockHeader::hash() const
       {
@@ -84,8 +66,11 @@ namespace sbmpi
         input << height << '|' << previousHash << '|' << merkleRoot << '|'
               << ts;
 
+        // Convert our data into a vector of bytes
         const std::string data = input.str();
-        return util::sha256(data);
+        const std::vector<unsigned char> dataBytes(data.begin(), data.end());
+        // Return the hex string of the hash
+        return util::toHex(util::keccak256(dataBytes));
       }
 
       /**

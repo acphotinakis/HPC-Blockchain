@@ -23,6 +23,7 @@ namespace sbmpi
         BlockHeader();
         BlockHeader(int height, const std::string& previousHash,
                     const std::string& merkleRoot);
+
         std::string       hash() const;
         std::vector<char> serialize() const;
         void              deserialize(const std::vector<char>& data);

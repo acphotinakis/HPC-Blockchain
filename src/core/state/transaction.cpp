@@ -50,9 +50,14 @@ namespace sbmpi
         id = util::toHex(rawId);
       }
 
+      /**
+       * @brief Produces a Keccak-256 (SHA3-256) hash of transaction data.
+       *
+       * Generates a unique hash based on sender, receiver, amount, and timestamp.
+       */
       std::vector<unsigned char> Transaction::constructHash() const {
         std::stringstream ss;
-        ss << from << to << amount << time;
+        ss << from << "|" << "|" << to << "|" << amount << "|" << time;
         // Set the ID to the Keccak256 hash
         std::string hashStr = ss.str();
         std::vector<unsigned char> hashBytes(hashStr.begin(), hashStr.end());
@@ -63,13 +68,14 @@ namespace sbmpi
       /**
        * @brief Signs the transaction using a provided private key.
        *
-       * The signature is a hash of the transaction data combined with the private key.
-       * (Note: This is a simplified simulation of signing for demonstration purposes).
+       * The signature uses ECDSA to compute a recoverable signature using 
+       * transaction data and a private key.
        * @param privateKey The private key used to sign the transaction.
        */
       void Transaction::sign(const std::vector<unsigned char>& privateKey)
       {
         signatureRaw = util::sign(rawId, privateKey);
+        signature = util::toHex(signatureRaw);
 
         if (signatureRaw.empty() || signatureRaw.size() != (util::KEYLEN * 2) + 1) {
           throw std::runtime_error("[CRYPTO]: Signature is empty or incorrect size!");
@@ -80,49 +86,18 @@ namespace sbmpi
        * @brief Verifies the transaction's signature.
        *
        * Checks if the signature is valid for the transaction data and the sender's public key.
-       * (Note: This verification is simplified for simulation and assumes 'from' is the public key).
        * @return True if the signature is valid, false otherwise.
        */
       bool Transaction::verify() const
       {
         // Check if our addresses are populated
         if (from.empty() || to.empty()) {
-          util::Logger::getLogger().error("Empty from and two.");
+          util::Logger::getLogger().error("Empty from and to.");
           return false;
         }
 
-        if (signatureRaw.empty()) {
-          util::Logger::getLogger().error("Empty signature.");  
-          return false;
-        }
-
-        if (rawId.empty()) {
-          util::Logger::getLogger().error("Empty ID.");  
-          return false;
-        }
-
-        // Check the signature and ID hash are correct lengths
-        if (signatureRaw.size() < ((util::KEYLEN*2) + 1) || rawId.size() < util::KEYLEN) {
-          util::Logger::getLogger().error("Incorrect key lengths.");  
-          return false;
-        }
-
-        std::vector<unsigned char> verificationHash(32);
-        verificationHash = constructHash();
-
-        // Vectors are first compared by length, then by sequence
-        if (verificationHash != rawId) {
-          util::Logger::getLogger().error("ID hashes do not match.");
-          return false;
-        }
-  
-        std::string recoveredAddress = util::recoverAddress(signatureRaw, verificationHash);
-        if (recoveredAddress != from) {
-          util::Logger::getLogger().error("Mistmatching addresses.");
-          return false;
-        }
-
-        return true;
+        std::vector<unsigned char> newId = constructHash();
+        return util::verify(newId, signatureRaw);
       }
 
       /**

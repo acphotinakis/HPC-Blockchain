@@ -18,7 +18,7 @@ namespace sbmpi
              * an Ethereum format.
              */
             Wallet::Wallet() {
-                privateKeyRaw = util::generatePrivateKey();
+                privateKeyRaw = util::generatePrivateKey(nullptr);
                 privateKeyHex = util::toHex(privateKeyRaw);
 
                 publicKeyRaw = util::derivePublicKey(privateKeyRaw);
