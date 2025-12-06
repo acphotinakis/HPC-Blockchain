@@ -217,8 +217,7 @@ int main(int argc, char** argv)
   sbmpi::util::Timer timer;
 
   if (world_rank == 0) {
-    logger.info("Generating wallets and distributing transactions...");
-    timer.start();
+    logger.info("Generating wallets and transactions...");
 
     // Create a vector containing 50 wallets, all with unique hexcodes
     std::vector<sbmpi::core::state::Wallet> allWallets = 
@@ -226,9 +225,9 @@ int main(int argc, char** argv)
     sbmpi::util::writeWalletAddresses("wallets.json", allWallets);
 
     for (const auto& w : allWallets) {
-      std::cout << "Wallet private key size: " << w.privateKeyRaw.size() 
-                << ", public key size: " << w.publicKeyRaw.size() 
-                << ", address: " << w.address << std::endl;
+      logger.debug("Wallet private key size: " + std::to_string(w.privateKeyRaw.size()) 
+                + ", public key size: " + std::to_string(w.publicKeyRaw.size())
+                + ", address: " + w.address);
     }
 
     std::vector<sbmpi::core::state::Transaction> all_transactions =
@@ -238,19 +237,16 @@ int main(int argc, char** argv)
         "total_simulation", config.runID, world_size, config.numShards,
         config.numTransactions, config.transactionSize, config.seed);
 
+    // Start timer after mock transactions have been generated
+    timer.start();
+
+    logger.info("Partitioning and distributing transactions...");
     std::vector<std::vector<sbmpi::core::state::Transaction>> partitioned_txs(
         config.numShards);
-    for (const auto& tx : all_transactions) {
-      // Use std::stoull to parse ID (safer than stoi if IDs get large)
-      // Fallback to 0 if ID parsing fails (though generator makes safe IDs)
-      uint64_t txIdVal = 0;
-      try {
-        txIdVal = std::stoull(tx.id);
-      } catch (...) {
-      }
-
-      int shardId = txIdVal % config.numShards;
-      partitioned_txs[shardId].push_back(tx);
+    for (size_t i = 0; i < all_transactions.size(); i++) {
+      // Evenly distribute transactions amongst shards
+      int shardId = i % config.numShards;
+      partitioned_txs[shardId].push_back(all_transactions[i]);
     }
 
     for (int shardId = 0; shardId < config.numShards; ++shardId) {
