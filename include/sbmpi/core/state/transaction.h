@@ -3,6 +3,9 @@
 
 #include <string>
 #include <vector>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 /**
  * @file transaction.h
@@ -77,6 +80,9 @@ namespace sbmpi
          * @return true if the signature is valid, false otherwise.
          */
         bool verify() const;
+
+        json toJSON() const;
+        void fromJSON(json& j);
 
         /**
          * @brief Serializes the Transaction object into a byte vector for

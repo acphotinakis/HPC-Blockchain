@@ -15,7 +15,7 @@ namespace sbmpi
      public:
       Blockchain();
       void                 addBlock(std::unique_ptr<blocks::Block> block);
-      const blocks::Block* getBlock(int height) const;
+      const blocks::Block* getBlock(size_t height) const;
       const blocks::Block* getLatestBlock() const;
       const std::vector<std::unique_ptr<blocks::Block>>& getBlockchain() const;
       bool                 validate() const;

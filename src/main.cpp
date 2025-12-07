@@ -219,10 +219,18 @@ int main(int argc, char** argv)
   if (world_rank == 0) {
     logger.info("Generating wallets and transactions...");
 
+    std::string walletJSONFilename = "wallets.json";
+    std::vector<sbmpi::core::state::Wallet> allWallets;
+    if (sbmpi::util::populatedFileExists(walletJSONFilename)) {
+      allWallets = sbmpi::util::readWalletsJSON(walletJSONFilename);
+    } else {
+      allWallets = sbmpi::util::generateMockWallets(50);
+      sbmpi::util::writeWalletsJSON(walletJSONFilename, allWallets);
+    }
     // Create a vector containing 50 wallets, all with unique hexcodes
-    std::vector<sbmpi::core::state::Wallet> allWallets = 
-        sbmpi::util::generateMockWallets(50); // Temp wallet count
-    sbmpi::util::writeWalletAddresses("wallets.json", allWallets);
+    // std::vector<sbmpi::core::state::Wallet> allWallets = 
+    //     sbmpi::util::generateMockWallets(50); // Temp wallet count
+    // sbmpi::util::writeWalletAddresses("wallets.json", allWallets);
 
     for (const auto& w : allWallets) {
       logger.debug("Wallet private key size: " + std::to_string(w.privateKeyRaw.size()) 
@@ -230,8 +238,20 @@ int main(int argc, char** argv)
                 + ", address: " + w.address);
     }
 
-    std::vector<sbmpi::core::state::Transaction> all_transactions =
+    std::string transactionJSONFilename = 
+      "transactions_" + std::to_string(config.numTransactions) + ".json";
+    logger.info(transactionJSONFilename);
+    std::vector<sbmpi::core::state::Transaction> allTransactions;
+    if (sbmpi::util::populatedFileExists(transactionJSONFilename)) {
+      logger.info("Transactions file exists, reading transactions.");
+      allTransactions = sbmpi::util::readTransactionsJSON(transactionJSONFilename);
+      logger.info(std::to_string(allTransactions.size()));
+    } else {
+      logger.info("Transactions file does not exist, creating transactions.");
+      allTransactions = 
         sbmpi::util::generateMockTransactions(config.numTransactions, allWallets);
+      sbmpi::util::writeTransactionsJSON(transactionJSONFilename, allTransactions);
+    }
 
     sbmpi::util::ExperimentParameters::record(
         "total_simulation", config.runID, world_size, config.numShards,
@@ -243,10 +263,10 @@ int main(int argc, char** argv)
     logger.info("Partitioning and distributing transactions...");
     std::vector<std::vector<sbmpi::core::state::Transaction>> partitioned_txs(
         config.numShards);
-    for (size_t i = 0; i < all_transactions.size(); i++) {
+    for (size_t i = 0; i < allTransactions.size(); i++) {
       // Evenly distribute transactions amongst shards
       int shardId = i % config.numShards;
-      partitioned_txs[shardId].push_back(all_transactions[i]);
+      partitioned_txs[shardId].push_back(allTransactions[i]);
     }
 
     for (int shardId = 0; shardId < config.numShards; ++shardId) {

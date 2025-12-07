@@ -39,6 +39,23 @@ namespace sbmpi
         return ss.str();
     }
 
+    std::vector<unsigned char> hexToBytes(const std::string& hex)
+    {
+        if (hex.size() % 2 != 0)
+            throw std::runtime_error("Hex string must have even length: " + hex);
+
+        std::vector<unsigned char> bytes;
+        bytes.reserve(hex.size() / 2);
+
+        for (size_t i = 0; i < hex.size(); i += 2) {
+            unsigned char byte =
+                static_cast<unsigned char>(std::stoul(hex.substr(i, 2), nullptr, 16));
+            bytes.push_back(byte);
+        }
+
+        return bytes;
+    }
+
     /**
     * @brief Generates a valid EC 32-byte Ethereum private key.
     * 

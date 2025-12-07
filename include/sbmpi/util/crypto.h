@@ -13,6 +13,7 @@ namespace util {
 const static size_t KEYLEN = 32;
 
 std::string toHex(const std::vector<unsigned char>& data);
+std::vector<unsigned char> hexToBytes(const std::string& hex);
 std::vector<unsigned char> generatePrivateKey(const secp256k1_context* ctx);
 std::vector<unsigned char> derivePublicKey(const std::vector<unsigned char>& privateKey);
 std::vector<unsigned char> keccak256(const std::vector<unsigned char>& data);

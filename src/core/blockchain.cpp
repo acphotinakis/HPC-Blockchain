@@ -62,7 +62,7 @@ namespace sbmpi
      * @param height The height (index) of the block to retrieve.
      * @return A pointer to the Block if found, nullptr otherwise.
      */
-    const blocks::Block* Blockchain::getBlock(int height) const
+    const blocks::Block* Blockchain::getBlock(size_t height) const
     {
       if (height >= 0 && height < chain.size()) {
         return chain[height].get();

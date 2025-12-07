@@ -100,6 +100,31 @@ namespace sbmpi
         return util::verify(newId, signatureRaw);
       }
 
+      json Transaction::toJSON() const {
+        json transactionJson = {
+          {"id", id},
+          {"from", from},
+          {"to", to},
+          {"amount", amount},
+          {"time", time},
+          {"signature", signature}
+        };
+        return transactionJson;
+      }
+
+      void Transaction::fromJSON(json& json) {
+        id = json["id"].get<std::string>();
+        rawId = util::hexToBytes(id);
+
+        from = json["from"].get<std::string>();
+        to = json["to"].get<std::string>();
+        amount = json["amount"].get<double>();
+        time = json["time"].get<int64_t>();
+
+        signature = json["signature"].get<std::string>();
+        signatureRaw = util::hexToBytes(signature);
+      }
+
       /**
        * @brief Serializes the Transaction object into a vector of characters.
        *

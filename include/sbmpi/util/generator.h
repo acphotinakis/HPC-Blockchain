@@ -2,6 +2,7 @@
 #define SBMPI_GENERATOR_H
 
 #include <vector>
+#include <filesystem>
 #include "../core/state/transaction.h"
 #include "../core/state/wallet.h"
 
@@ -9,6 +10,9 @@ namespace sbmpi
 {
   namespace util
   {
+    bool populatedFileExists(const std::string& filename);
+    bool checkJSONFileExtenstion(const std::string& filename);
+
     /**
      * @brief Generates a set of mock user wallets. 
      *
@@ -27,7 +31,9 @@ namespace sbmpi
      * * @param filename The file name to write the data to. (Must have .json suffix).
      * * @param wallets A collection of populated `Wallet` objects.
      */
-    void writeWalletAddresses(const std::string& filename, std::vector<sbmpi::core::state::Wallet> wallets);
+    void writeWalletsJSON(const std::string& filename, std::vector<sbmpi::core::state::Wallet> wallets);
+
+    std::vector<sbmpi::core::state::Wallet> readWalletsJSON(const std::string& filename);
     
     /**
      * @brief Generates a deterministic set of mock transactions.
@@ -39,6 +45,11 @@ namespace sbmpi
      */
     std::vector<sbmpi::core::state::Transaction> generateMockTransactions(
         size_t count, std::vector<sbmpi::core::state::Wallet> wallets);
+    void writeTransactionsJSON(
+      const std::string& filename, 
+      std::vector<sbmpi::core::state::Transaction> transactions);
+    std::vector<sbmpi::core::state::Transaction> readTransactionsJSON(
+      const std::string& filename);
 
   }  // namespace util
 }  // namespace sbmpi
