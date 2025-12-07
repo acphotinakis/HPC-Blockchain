@@ -57,7 +57,7 @@ namespace sbmpi
        */
       std::vector<unsigned char> Transaction::constructHash() const {
         std::stringstream ss;
-        ss << from << "|" << "|" << to << "|" << amount << "|" << time;
+        ss << from << "|" << to << "|" << amount << "|" << time;
         // Set the ID to the Keccak256 hash
         std::string hashStr = ss.str();
         std::vector<unsigned char> hashBytes(hashStr.begin(), hashStr.end());
@@ -100,6 +100,13 @@ namespace sbmpi
         return util::verify(newId, signatureRaw);
       }
 
+      /**
+       * @brief Serializes transaction data to a `json` instance.
+       *
+       * Uses Niels Lohmann's C++ JSON library for straightforward JSON parsing.
+       * Fields to write: "id", "from", "to", "amount", "time", and "signature".
+       * @return A `json` instance containing transaction data in JSON format.
+       */
       json Transaction::toJSON() const {
         json transactionJson = {
           {"id", id},
@@ -112,6 +119,12 @@ namespace sbmpi
         return transactionJson;
       }
 
+      /**
+       * @brief Deserializes `json` data to populate a Transaction's data.
+       *
+       * Uses Niels Lohmann's C++ JSON library for straightforward JSON reading.
+       * Fields to read: "id", "from", "to", "amount", "time", and "signature".
+       */
       void Transaction::fromJSON(json& json) {
         id = json["id"].get<std::string>();
         rawId = util::hexToBytes(id);

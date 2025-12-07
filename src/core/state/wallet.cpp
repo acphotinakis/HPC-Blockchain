@@ -16,8 +16,10 @@ namespace sbmpi
             /**
              * @brief Constructs a new Wallet object.
              *
-             * Generates a unique private key, public key, and address under
-             * an Ethereum format.
+             * Generates a unique private key, public key, and address in
+             * an Ethereum format if specified; otherwise, leave empty.
+             * @param generateNew Specifies whether a Wallet's member variables should 
+             * be newly generated, or left empty.
              */
             Wallet::Wallet(bool generateNew) {
                 if (generateNew) {
@@ -36,18 +38,13 @@ namespace sbmpi
                 
             }
 
-            Wallet::Wallet(
-                std::string _publicKey, std::string _privateKey, std::string _address
-            ) {
-                privateKeyHex = _privateKey;
-                privateKeyRaw = util::hexToBytes(_privateKey);
-
-                publicKeyHex = _publicKey;
-                publicKeyRaw = util::hexToBytes(_publicKey);
-
-                address = _address;
-            }
-
+            /**
+             * @brief Serializes wallet data to a `json` instance.
+             *
+             * Uses Niels Lohmann's C++ JSON library for straightforward JSON parsing.
+             * Fields to write: "publicKey", "privateKey", and "address".
+             * @return A `json` instance containing wallet data in JSON format.
+             */
             json Wallet::toJSON() const {
                 json walletJson = {
                     {"publicKey", publicKeyHex},
@@ -57,6 +54,12 @@ namespace sbmpi
                 return walletJson;
             }
 
+            /**
+             * @brief Deserializes `json` data to populate a Transaction's data.
+             *
+             * Uses Niels Lohmann's C++ JSON library for straightforward JSON reading.
+             * Fields to read: "publicKey", "privateKey", "address".
+             */
             void Wallet::fromJSON(json& json) {
                 publicKeyHex = json["publicKey"].get<std::string>();
                 publicKeyRaw = util::hexToBytes(publicKeyHex);

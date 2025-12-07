@@ -22,6 +22,12 @@ namespace sbmpi
 {
   namespace util
   {
+    /**
+     * Checks if a file exists, is regular, and has data.
+     *
+     * @param filename The filename to evaluate.
+     * @returns True if the above conditions are all true; otherwise, false.
+     */
     bool populatedFileExists(const std::string& filename)
     {
         return std::filesystem::exists(POOLDIR + filename)
@@ -29,6 +35,12 @@ namespace sbmpi
             && std::filesystem::file_size(POOLDIR + filename) > 0;
     }
 
+    /**
+     * Checks if a filename contains a ".json" file extension.
+     *
+     * @param filename The filename to evaluate.
+     * @returns True if the filename contains a ".json" file extension; otherwise, false.
+     */
     bool checkJSONFileExtenstion(const std::string& filename) {
       // Check if the filename is large enough to hold .json extension
       if (filename.size() <= 5) {
@@ -71,10 +83,10 @@ namespace sbmpi
     /**
      * @brief Writes a collection of `Wallet` object data to a specified JSON file.
      *
-     * The method needs to receive a file name with a .json extension or the method will
-     * not output. If the file name is valid, then the method iterates through the collection
-     * of `Wallet` objects and creates a collection of JSON objects that contain a: "publicKey",
-     * "privateKey", and "address" string.
+     * The function needs to receive a file name with a .json extension or the function will
+     * not output. If the file name is valid, then the function iterates through the collection
+     * of `Wallet` objects and creates a collection of JSON objects. Lastly, the final parsed 
+     * JSON is written to the desired file in the /pools directory.
      * @param filename A correct JSON filename.
      * @param wallets A vector instance containing populated `Wallet` objects.
      */
@@ -87,7 +99,7 @@ namespace sbmpi
       // Check if directory already exists, then gracefully continue
       mkdir(POOLDIR.c_str(), 0777);
 
-      // Create our wallet JSON
+      // Create a JSON containing a collection of wallet data
       json j;
       j["wallets"] = json::array();
       for (auto& wallet : wallets) {
@@ -95,7 +107,7 @@ namespace sbmpi
         j["wallets"].push_back(jWallet);
       }
 
-      // Open in truncate mode, overwrite old run wallets
+      // Open in truncate mode, overwrite old run wallets (if needed)
       std::ofstream walletPool(POOLDIR + filename, std::ios::trunc);
       if (walletPool.is_open()) {
         walletPool << j.dump(4);
@@ -103,13 +115,22 @@ namespace sbmpi
       }
     }
 
+    /**
+     * @brief Reads a specified JSON file to create a vector of `Wallet` objects.
+     *
+     * The function needs to receive a file name with a .json extension or the function will
+     * not output. If the file name is valid, then the function iterates through the collection
+     * of JSON wallet objects and instantiates a collection of populated `Wallet` objects.
+     * @param filename A correct JSON filename.
+     */
     std::vector<sbmpi::core::state::Wallet> readWalletsJSON(const std::string& filename) {
       // Initialize a new wallet vector to store our new instances
       std::vector<sbmpi::core::state::Wallet> wallets;
       
       // Check if the filename for valid .json extension
       if (!checkJSONFileExtenstion(filename)) {
-        return wallets;
+        // Throw an error if an invalid filename was provided
+        throw std::runtime_error("Inalid file extension! Not a .json file.");
       }
       
       // Read the wallet JSON file and parse the fields into a new object
@@ -123,8 +144,6 @@ namespace sbmpi
 
       return wallets;
     }
-
-
 
     /**
      * @brief Generates a specified number of mock transactions.
@@ -212,6 +231,16 @@ namespace sbmpi
       return transactions;
     }
 
+    /**
+     * @brief Writes a collection of `Transaction` object data to a specified JSON file.
+     *
+     * The function needs to receive a file name with a .json extension or the function will
+     * not output. If the file name is valid, then the function iterates through the collection
+     * of `Transaction` objects and creates a collection of JSON objects. Lastly, the final parsed 
+     * JSON is written to the desired file in the /pools directory.
+     * @param filename A correct JSON filename.
+     * @param wallets A vector instance containing populated `Transaction` objects.
+     */
     void writeTransactionsJSON(
       const std::string& filename, 
       std::vector<sbmpi::core::state::Transaction> transactions
@@ -223,6 +252,7 @@ namespace sbmpi
       // Check if directory already exists, then gracefully continue
       mkdir(POOLDIR.c_str(), 0777);
 
+      // Create a JSON containing a collection of transaction data
       json j;
       j["transactions"] = json::array();
       for (auto& transaction : transactions) {
@@ -230,6 +260,7 @@ namespace sbmpi
         j["transactions"].push_back(jTransaction);
       }
 
+      // Open in truncate mode and overwrite existing transaction data (if needed)
       std::ofstream transactionPool(POOLDIR + filename, std::ios::trunc);
       if (transactionPool.is_open()) {
         transactionPool << j.dump(4);
@@ -237,16 +268,28 @@ namespace sbmpi
       }
     }
 
+    /**
+     * @brief Reads a specified JSON file to create a vector of `Transaction` objects.
+     *
+     * The function needs to receive a file name with a .json extension or the function will
+     * not output. If the file name is valid, then the function iterates through the collection
+     * of JSON transaction objects and instantiates a collection of populated `Transaction` objects.
+     * @param filename A correct JSON filename.
+     * @param transactions A vector instance containing populated `Transaction` objects.
+     */
     std::vector<sbmpi::core::state::Transaction> readTransactionsJSON(
       const std::string& filename
     ) {
-      util::Logger::getLogger().info("Reading transactions...");
+      // Initialize a new transaction vector to store our new instances
       std::vector<sbmpi::core::state::Transaction> transactions;
 
+      // Check if the filename for valid .json extension
       if (!checkJSONFileExtenstion(filename)) {
-        return transactions;
+        // Throw an error if an invalid filename was provided
+        throw std::runtime_error("Inalid file extension! Not a .json file.");
       }
 
+      // Read the transaction JSON file and parse the fields into a new object
       std::ifstream transactionPool(POOLDIR + filename);
       json data = json::parse(transactionPool);
       for (auto& tx: data["transactions"]) {

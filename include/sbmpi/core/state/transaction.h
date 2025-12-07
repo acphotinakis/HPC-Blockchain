@@ -60,28 +60,47 @@ namespace sbmpi
         Transaction(const std::string& from, const std::string& to,
                     double amount);
 
+        /**
+         * @brief Constructs a deterministic Keccak-256 hash using a Transaction data.
+         *
+         * This method specifically only hashes the following member variables:
+         * from, to, amount, and time.
+         */
         std::vector<unsigned char> constructHash() const;
 
         /**
          * @brief Signs the transaction with a private key.
          *
-         * This method should generate a cryptographic signature of the
+         * This method generates a cryptographic signature of the
          * transaction's core data (from, to, amount) to ensure its authenticity
-         * and integrity. The actual cryptographic implementation is expected in
+         * and integrity. The actual cryptographic implementation is in
          * crypto.cpp.
-         *
          * @param privateKey The private key of the sender.
          */
         void sign(const std::vector<unsigned char>& privateKey);
 
         /**
-         * @brief Verifies the transaction's signature.
+         * @brief Verifies the Transaction's signature.
          *
-         * @return true if the signature is valid, false otherwise.
+         * This method uses ECDSA functions from crypto.cpp to verify
+         * a Transaction's signature.
+         * @return True if the signature is valid, false otherwise.
          */
         bool verify() const;
 
+        /**
+         * @brief Serializes transaction data to a `json` instance.
+         *
+         * Uses Niels Lohmann's C++ JSON library for straightforward JSON parsing.
+         * @return A `json` instance containing transaction data in JSON format.
+         */
         json toJSON() const;
+
+        /**
+         * @brief Deserializes `json` data to populate a Transaction's data.
+         *
+         * Uses Niels Lohmann's C++ JSON library for straightforward JSON reading.
+         */
         void fromJSON(json& j);
 
         /**
