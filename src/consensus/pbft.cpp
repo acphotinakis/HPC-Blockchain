@@ -19,11 +19,12 @@
 #include "../../include/sbmpi/util/metrics.h"
 #include "../../include/sbmpi/util/timer.h"
 
+#include <atomic>
+
 namespace sbmpi
 {
   namespace consensus
   {
-
     /**
      * @brief Implements the Practical Byzantine Fault Tolerance (PBFT)
      * consensus protocol.
@@ -157,6 +158,22 @@ namespace sbmpi
             network::bcast(blockData, leaderRank, communicator);
             messagesExchanged++;
             block.deserialize(blockData);
+
+            std::atomic<bool> allValid(true);
+
+            #pragma omp parallel for
+            for (size_t i = 0; i < block.transactions.size(); ++i) {
+                if (!allValid) continue; // Skip if already failed
+                if (!block.transactions[i].verify()) {
+                    allValid = false;
+                }
+            }
+
+            if (!allValid) {
+                util::Logger::getLogger().error("Block verification failed. Replica will NOT vote.");
+                return {core::blocks::MicroBlock(), messagesExchanged}; 
+            }
+
             util::Logger::getLogger().debug(
                 "PBFT Replica: Received block proposal.");
           }

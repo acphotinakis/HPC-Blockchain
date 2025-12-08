@@ -27,7 +27,7 @@ namespace sbmpi
        * A transaction includes sender, receiver, amount, a unique ID, and a digital signature.
        * It provides methods for signing, verifying, serializing, and deserializing.
        */
-      Transaction::Transaction() : amount(0.0) {}
+      Transaction::Transaction() : amount(0.0), nonce(0) {}
 
       /**
        * @brief Constructs a new Transaction object.
@@ -38,8 +38,8 @@ namespace sbmpi
        * @param amount The amount of currency to transfer.
        */
       Transaction::Transaction(const std::string& from, const std::string& to,
-                               double amount)
-          : from(from), to(to), amount(amount)
+                               double amount, uint64_t nonce)
+          : from(from), to(to), amount(amount), nonce(nonce)
       {
         time = std::chrono::system_clock::now().time_since_epoch().count();
         
@@ -57,7 +57,7 @@ namespace sbmpi
        */
       std::vector<unsigned char> Transaction::constructHash() const {
         std::stringstream ss;
-        ss << from << "|" << to << "|" << amount << "|" << time;
+        ss << from << "|" << to << "|" << amount << "|" << nonce << "|" << time;
         // Set the ID to the Keccak256 hash
         std::string hashStr = ss.str();
         std::vector<unsigned char> hashBytes(hashStr.begin(), hashStr.end());
@@ -114,6 +114,7 @@ namespace sbmpi
           {"to", to},
           {"amount", amount},
           {"time", time},
+          {"nonce", nonce},
           {"signature", signature}
         };
         return transactionJson;
@@ -133,6 +134,7 @@ namespace sbmpi
         to = json["to"].get<std::string>();
         amount = json["amount"].get<double>();
         time = json["time"].get<int64_t>();
+        nonce = json["nonce"].get<uint64_t>();
 
         signature = json["signature"].get<std::string>();
         signatureRaw = util::hexToBytes(signature);
@@ -153,6 +155,7 @@ namespace sbmpi
         util::pack(to, buffer);
         util::pack(amount, buffer);
         util::pack_int64(time, buffer);
+        util::pack_uint64(nonce, buffer);
         util::pack(signature, buffer);
         util::pack(signatureRaw, buffer);
         return buffer;
@@ -173,6 +176,7 @@ namespace sbmpi
         to = util::unpack_string(data, offset);
         amount = util::unpack_double(data, offset);
         time = util::unpack_int64_t(data, offset);
+        nonce = util::unpack_uint64_t(data, offset);
         signature = util::unpack_string(data, offset);
         signatureRaw = util::unpack_vector_unsigned_char(data, offset);
       }

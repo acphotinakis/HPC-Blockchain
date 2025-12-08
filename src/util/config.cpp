@@ -53,11 +53,14 @@ namespace sbmpi
         } else if (arg == "--transaction-size" && i + 1 < argc) {
             transactionSize = std::stoi(argv[++i]);
 
+        } else if ((arg == "-f" || arg == "--faults") && i + 1 < argc) {
+            faultProbability = std::stod(argv[++i]);
+
         } else if (arg == "-n" && i + 1 < argc) {
           numNodes = std::stoi(argv[++i]);
         } else if (arg == "-v" && i + 1 < argc) {
           verbose = std::stoi(argv[++i]);
-
+        
         } else {
           // If the argument is none of the above, it is unknown
           std::cerr << "Unknown argument: " << arg << std::endl;
@@ -80,6 +83,7 @@ namespace sbmpi
       std::cout << "  Run ID: " << runID << std::endl;
       std::cout << "  Seed: " << seed << std::endl;
       std::cout << "  Transaction Size: " << transactionSize << std::endl;
+      std::cout << "  Fault Probability: " << faultProbability << std::endl;
     }
 
   } // namespace util

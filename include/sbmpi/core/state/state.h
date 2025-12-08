@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include "transaction.h"
 
 namespace sbmpi {
@@ -17,6 +18,7 @@ class State {
 
  private:
   std::map<std::string, double> balances;
+  std::unordered_map<std::string, uint64_t> accountNonces;
 };
 
 }  // namespace state

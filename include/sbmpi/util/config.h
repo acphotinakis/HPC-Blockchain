@@ -18,6 +18,7 @@ namespace sbmpi
       int runID           = 0;
       int seed            = 0;
       int transactionSize = 128;
+      double faultProbability = 0.0;
 
       bool parse(int argc, char** argv);
       void print() const;

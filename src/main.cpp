@@ -14,6 +14,7 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
+#include <iomanip>
 
 #include "../include/sbmpi/consensus/pbft.h"
 #include "../include/sbmpi/core/blockchain.h"
@@ -247,7 +248,7 @@ int main(int argc, char** argv)
     // Otherwise, generate new wallets and write them to the new file
     else {
       allTransactions = 
-        sbmpi::util::generateMockTransactions(config.numTransactions, allWallets);
+        sbmpi::util::generateMockTransactions(config.numTransactions, allWallets, config.faultProbability);
       sbmpi::util::writeTransactionsJSON(transactionJSONFilename, allTransactions);
     }
 
@@ -377,22 +378,72 @@ int main(int argc, char** argv)
     sbmpi::util::ExperimentParameters::save(
         "metrics/experiment_parameters.csv");
 
-    // Print out the current blockchain for a given run
-    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
-        blockchain->getBlockchain();
-    for (size_t bindex = 0; bindex < chain.size(); bindex++) {
-      if (chain[bindex]) {
-        std::stringstream ss;
-        ss << "[Block " << std::to_string(bindex)
-           << "] | Hash: " << chain[bindex]->getHash()
-           << " | Number of Transactions: "
-           << std::to_string(chain[bindex]->transactions.size());
-        logger.info(ss.str());
-      }
-    }
+    // // Print out the current blockchain for a given run
+    // const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
+    //     blockchain->getBlockchain();
+    // for (size_t bindex = 0; bindex < chain.size(); bindex++) {
+    //   if (chain[bindex]) {
+    //     std::stringstream ss;
+    //     ss << "[Block " << std::to_string(bindex)
+    //        << "] | Hash: " << chain[bindex]->getHash()
+    //        << " | Number of Transactions: "
+    //        << std::to_string(chain[bindex]->transactions.size());
+    //     logger.info(ss.str());
+    //   }
+    // }
 
-    logger.info("Simulation finished in " + std::to_string(elapsed_time) +
-                " seconds.");
+    // logger.info("Simulation finished in " + std::to_string(elapsed_time) +
+    //             " seconds.");
+
+    // --- DEEP DIVE BLOCKCHAIN PRINTING ---
+    sbmpi::util::Logger::getLogger().info("\n");
+    sbmpi::util::Logger::getLogger().info("========================================================================================================================");
+    sbmpi::util::Logger::getLogger().info("                                               FINAL BLOCKCHAIN STATE                                                   ");
+    sbmpi::util::Logger::getLogger().info("========================================================================================================================");
+
+    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain = blockchain->getBlockchain();
+
+    for (size_t bindex = 0; bindex < chain.size(); bindex++) {
+      const auto& block = chain[bindex];
+      if (!block) continue;
+
+      std::stringstream ss;
+      ss << "\n";
+      ss << " [BLOCK " << bindex << "]\n";
+      ss << " ------------------------------------------------------------------------------------------------------------------------\n";
+      ss << " Hash:          " << block->getHash() << "\n";
+      ss << " Previous Hash: " << block->header.previousHash << "\n"; // Access header directly
+      ss << " Merkle Root:   " << block->header.merkleRoot << "\n";
+      ss << " Tx Count:      " << block->transactions.size() << "\n";
+      ss << " ------------------------------------------------------------------------------------------------------------------------\n";
+
+      if (block->transactions.empty()) {
+        ss << "    (Genesis Block or Empty)\n";
+      } else {
+        // Table Header
+        ss << "    " 
+           << std::left << std::setw(66) << "Transaction ID"
+           << std::left << std::setw(44) << "From (Sender)"
+           << std::left << std::setw(44) << "To (Receiver)"
+           << std::left << std::setw(15) << "Amount"
+           << "Nonce\n";
+        
+        ss << "    " << std::string(170, '-') << "\n";
+
+        // Transaction Rows
+        for (const auto& tx : block->transactions) {
+          ss << "    " 
+             << std::left << std::setw(66) << tx.id
+             << std::left << std::setw(44) << tx.from
+             << std::left << std::setw(44) << tx.to
+             << "$" << std::left << std::setw(14) << std::fixed << std::setprecision(2) << tx.amount
+             << tx.nonce << "\n"; // Make sure 'nonce' is implemented in Transaction class
+        }
+        ss << " ========================================================================================================================";
+      }
+      // Log the entire block details at once
+      sbmpi::util::Logger::getLogger().info(ss.str());
+    }
   }
 
   if (shard_comm != MPI_COMM_NULL && shard_comm != MPI_COMM_WORLD) {

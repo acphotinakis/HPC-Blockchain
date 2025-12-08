@@ -31,6 +31,12 @@ namespace sbmpi
       buffer.insert(buffer.end(), bytes, bytes + sizeof(int64_t));
     }
 
+    void pack_uint64(uint64_t value, std::vector<char>& buffer)
+    {
+      const char* bytes = reinterpret_cast<const char*>(&value);
+      buffer.insert(buffer.end(), bytes, bytes + sizeof(uint64_t));
+    }
+
     /**
      * @brief Packs a double-precision floating-point value into a character vector buffer.
      * @param value The double to pack.
@@ -86,6 +92,18 @@ namespace sbmpi
         
         std::memcpy(&value, &buffer[offset], sizeof(int64_t));
         offset += sizeof(int64_t);
+        return value;
+    }
+
+    uint64_t unpack_uint64_t(const std::vector<char>& buffer, int& offset)
+    {
+        uint64_t value;
+        if (offset + sizeof(uint64_t) > buffer.size()) {
+            throw std::runtime_error("Not enough data to unpack uint64_t");
+        }
+        
+        std::memcpy(&value, &buffer[offset], sizeof(uint64_t));
+        offset += sizeof(uint64_t);
         return value;
     }
 

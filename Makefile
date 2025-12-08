@@ -118,7 +118,7 @@ $(BUILD_DIR)/%: $(TEST_DIR)/%.cpp $(LIB_OBJS)
 
 # Configurable parameters for 'make run'
 NP   ?= 8
-ARGS ?= --shards 4 --transactions 100000
+ARGS ?= --shards 6 --transactions 100000
 
 # Rule to run the main simulation.
 # Example: make run NP=64 ARGS="--shards 8 --transactions 10000"

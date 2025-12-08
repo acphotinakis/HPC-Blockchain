@@ -4,6 +4,8 @@
  */
 #include "../../../include/sbmpi/core/state/state.h"
 
+#include "../../../include/sbmpi/util/logging.h"
+
 namespace sbmpi
 {
   namespace core
@@ -38,6 +40,12 @@ namespace sbmpi
           return false;
         }
 
+        if (accountNonces[tx.from] != tx.nonce) {
+            util::Logger::getLogger().error("Nonce mismatch! Expected: " + 
+                std::to_string(accountNonces[tx.from]) + ", Got: " + std::to_string(tx.nonce));
+            return false;
+        }
+
         auto from_it = balances.find(tx.from);
         if (from_it == balances.end() || from_it->second < tx.amount) {
           // Sender does not exist or has insufficient funds
@@ -53,6 +61,7 @@ namespace sbmpi
           to_it->second += tx.amount;
         }
 
+        accountNonces[tx.from]++;
         return true;
       }
 

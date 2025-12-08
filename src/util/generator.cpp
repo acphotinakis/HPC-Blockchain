@@ -14,6 +14,7 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <unordered_map>
 
 static const std::string POOLDIR{"pools/"};
 using json = nlohmann::json;
@@ -158,7 +159,7 @@ namespace sbmpi
      * @return A std::vector of generated core::state::Transaction objects.
      */
     std::vector<sbmpi::core::state::Transaction> generateMockTransactions(
-        size_t count, std::vector<sbmpi::core::state::Wallet> wallets)
+        size_t count, std::vector<sbmpi::core::state::Wallet> wallets, double faultProbability)
     {
       std::vector<sbmpi::core::state::Transaction> transactions;
       transactions.reserve(count);
@@ -167,10 +168,15 @@ namespace sbmpi
       // This ensures consistent benchmarking between serial and parallel runs.
       std::mt19937 gen(42);
 
+      // Nonce tracking for each sender address
+      std::unordered_map<std::string, uint64_t> nonces;
+
       // Simulate a pool of unique users
       std::uniform_int_distribution<> userDist(1, wallets.size());
       // Random transaction amounts between 0.01 and 1000.00
       std::uniform_real_distribution<> amountDist(0.01, 1000.0);
+      // Distribution for fault injection
+      std::uniform_real_distribution<> faultDist(0.0, 1.0);
 
       for (size_t i = 0; i < count; ++i) {
         // Generate Sender
@@ -189,14 +195,22 @@ namespace sbmpi
 
         double amount = amountDist(gen);
 
+        // Get and increment the nonce for the sender
+        uint64_t currentNonce = nonces[senderAddress]++;
+
         // Instantiate the Transaction
-        sbmpi::core::state::Transaction tx(senderAddress, receiverAddress, amount);
+        sbmpi::core::state::Transaction tx(senderAddress, receiverAddress, amount, currentNonce);
 
         if (senderWallet.privateKeyRaw.empty()) {
           throw std::runtime_error("Empty private key!");
         }
 
         tx.sign(senderWallet.privateKeyRaw);
+
+        if (faultDist(gen) < faultProbability) {
+            tx.amount += 1000000.0; 
+            std::cout << "[GENERATOR] Injected FAULT into Tx: " << tx.id << std::endl;
+        }
 
         transactions.push_back(tx);
       }

@@ -92,25 +92,32 @@ namespace sbmpi
             "Shard " + std::to_string(id) + " Leader: Starting ingestion of " +
             std::to_string(numTx) + " transactions.");
 
+        std::vector<core::state::Transaction> tempTxList;
+        tempTxList.reserve(numTx);
         for (int i = 0; i < numTx; ++i) {
-          int                      txSize = util::unpack_int(buffer, offset);
-          std::vector<char>        txData(buffer.begin() + offset,
-                                          buffer.begin() + offset + txSize);
-          core::state::Transaction tx;
-          tx.deserialize(txData);
+            int txSize = util::unpack_int(buffer, offset);
+            std::vector<char> txData(buffer.begin() + offset, buffer.begin() + offset + txSize);
+            core::state::Transaction tx;
+            tx.deserialize(txData);
+            tempTxList.push_back(tx);
+            offset += txSize;
+        }
 
-          // [LOG] Deep validation log
-          if (tx.verify()) {
-            util::Logger::getLogger().debug("Shard " + std::to_string(id) +
-                                            ": Validated transaction " + tx.id);
-            mempool.push_back(tx);
-          } else {
-            util::Logger::getLogger().error(
-                "Shard " + std::to_string(id) +
-                ": FAILED validation for transaction " + tx.id);
-          }
+        std::vector<int> validity(numTx, 0);
 
-          offset += txSize;
+        #pragma omp parallel for
+        for (int i = 0; i < numTx; ++i) {
+            if (tempTxList[i].verify()) {
+                validity[i] = 1;
+            }
+        }
+
+        for (int i = 0; i < numTx; ++i) {
+            if (validity[i]) {
+                mempool.push_back(tempTxList[i]);
+            } else {
+                util::Logger::getLogger().error("Invalid Tx discarded: " + tempTxList[i].id);
+            }
         }
 
         util::Logger::getLogger().info(

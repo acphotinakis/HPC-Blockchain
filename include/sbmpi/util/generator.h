@@ -61,10 +61,10 @@ namespace sbmpi
      * is identical across different simulation runs, allowing for accurate
      * benchmarking of the sharding speedup.
      * * @param count The number of transactions to generate.
-     * * @return A vector of fully populated and signed Transaction objects.
+     * @return A vector of fully populated and signed Transaction objects.
      */
     std::vector<sbmpi::core::state::Transaction> generateMockTransactions(
-        size_t count, std::vector<sbmpi::core::state::Wallet> wallets);
+        size_t count, std::vector<sbmpi::core::state::Wallet> wallets, double faultProbability = 0.0);
     
     /**
      * @brief Writes a collection of `Transaction` objects to a specified file.

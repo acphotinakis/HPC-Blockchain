@@ -40,6 +40,8 @@ namespace sbmpi
         double amount;
         // Time transaction was made
         int64_t time;
+        // Nonce for replay protection
+        uint64_t nonce;
         // Cryptographic signature of the transaction data
         std::string signature;
         // Raw signature 65 bytes (r[32],s[32]) + 1 bytes for recovery number
@@ -56,9 +58,10 @@ namespace sbmpi
          * @param from The sender's address.
          * @param to The receiver's address.
          * @param amount The amount to be transferred.
+         * @param nonce The transaction nonce.
          */
         Transaction(const std::string& from, const std::string& to,
-                    double amount);
+                    double amount, uint64_t nonce);
 
         /**
          * @brief Constructs a deterministic Keccak-256 hash using a Transaction data.
