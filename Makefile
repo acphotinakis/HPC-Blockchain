@@ -29,7 +29,7 @@ CXX := mpic++
 # -Wall -Wextra: Enable all useful warnings.
 # -Iinclude:  Tell the compiler where to find our headers (e.g., "sbmpi/core/node.h").
 # -MMD -MP:   Generate dependency files (.d) for automatic header tracking.
-CXXFLAGS := -std=c++17 -g -Wall -Wextra -Iinclude -MMD -MP -Isecp256k1/include -Ijson/single_include
+CXXFLAGS := -std=c++17 -g -Wall -Wextra -fopenmp -Iinclude -MMD -MP -Isecp256k1/include -Ijson/single_include
 
 # Linker Flags: (MPI wrapper handles most linking)
 LDFLAGS := secp256k1/local/lib/libsecp256k1.a -lcrypto

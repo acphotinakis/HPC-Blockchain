@@ -9,12 +9,12 @@
  * and aggregates microblocks into macroblocks.
  */
 #include <string.h>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <numeric>
 #include <sstream>
 #include <vector>
-#include <iomanip>
 
 #include "../include/sbmpi/consensus/pbft.h"
 #include "../include/sbmpi/core/blockchain.h"
@@ -220,41 +220,56 @@ int main(int argc, char** argv)
   if (world_rank == 0) {
     logger.info("Generating wallets and transactions...");
 
-    std::string walletJSONFilename = "wallets.json";
+    std::string                             walletJSONFilename = "wallets.json";
     std::vector<sbmpi::core::state::Wallet> allWallets;
-    // If wallets.json exists, read wallet data into the vector
-    if (sbmpi::util::populatedFileExists(walletJSONFilename)) {
-      allWallets = sbmpi::util::readWalletsJSON(walletJSONFilename);
-    }
-    // Otherwise, generate 50 new wallets and write them to the new file 
-    else {
-      allWallets = sbmpi::util::generateMockWallets(50);
-      sbmpi::util::writeWalletsJSON(walletJSONFilename, allWallets);
-    }
+    // // If wallets.json exists, read wallet data into the vector
+    // if (sbmpi::util::populatedFileExists(walletJSONFilename)) {
+    //   allWallets = sbmpi::util::readWalletsJSON(walletJSONFilename);
+    // }
+    // // Otherwise, generate 50 new wallets and write them to the new file
+    // else {
+    //   allWallets = sbmpi::util::generateMockWallets(50);
+    //   sbmpi::util::writeWalletsJSON(walletJSONFilename, allWallets);
+    // }
+
+    allWallets = sbmpi::util::generateMockWallets(50);
+    sbmpi::util::writeWalletsJSON(walletJSONFilename, allWallets);
 
     for (const auto& w : allWallets) {
-      logger.debug("Wallet private key size: " + std::to_string(w.privateKeyRaw.size()) 
-                + ", public key size: " + std::to_string(w.publicKeyRaw.size())
-                + ", address: " + w.address);
+      logger.debug(
+          "Wallet private key size: " + std::to_string(w.privateKeyRaw.size()) +
+          ", public key size: " + std::to_string(w.publicKeyRaw.size()) +
+          ", address: " + w.address);
     }
 
-    std::string transactionJSONFilename = 
-      "transactions_" + std::to_string(config.numTransactions) + ".json";
+    std::string transactionJSONFilename =
+        "transactions_" + std::to_string(config.numTransactions) + ".json";
     std::vector<sbmpi::core::state::Transaction> allTransactions;
-    // If transactions_n.json exists, read the transaction data into the vector
-    if (sbmpi::util::populatedFileExists(transactionJSONFilename)) {
-      allTransactions = sbmpi::util::readTransactionsJSON(transactionJSONFilename);
-    } 
-    // Otherwise, generate new wallets and write them to the new file
-    else {
-      allTransactions = 
-        sbmpi::util::generateMockTransactions(config.numTransactions, allWallets, config.faultProbability);
-      sbmpi::util::writeTransactionsJSON(transactionJSONFilename, allTransactions);
-    }
+    // // If transactions_n.json exists, read the transaction data into the
+    // vector if (sbmpi::util::populatedFileExists(transactionJSONFilename)) {
+    //   allTransactions =
+    //   sbmpi::util::readTransactionsJSON(transactionJSONFilename);
+    // }
+    // // Otherwise, generate new wallets and write them to the new file
+    // else {
+    //   allTransactions =
+    //     sbmpi::util::generateMockTransactions(config.numTransactions,
+    //     allWallets, config.faultProbability);
+    //   sbmpi::util::writeTransactionsJSON(transactionJSONFilename,
+    //   allTransactions);
+    // }
 
-    // Check if the number of transactions in the vector matches the config amount
-    if (allTransactions.size() != static_cast<unsigned long>(config.numTransactions)) {
-      throw std::runtime_error("Generated transactions is not of correct size!");
+    allTransactions = sbmpi::util::generateMockTransactions(
+        config.numTransactions, allWallets, config.faultProbability);
+    sbmpi::util::writeTransactionsJSON(transactionJSONFilename,
+                                       allTransactions);
+
+    // Check if the number of transactions in the vector matches the config
+    // amount
+    if (allTransactions.size() !=
+        static_cast<unsigned long>(config.numTransactions)) {
+      throw std::runtime_error(
+          "Generated transactions is not of correct size!");
     }
 
     sbmpi::util::ExperimentParameters::record(
@@ -397,11 +412,18 @@ int main(int argc, char** argv)
 
     // --- DEEP DIVE BLOCKCHAIN PRINTING ---
     sbmpi::util::Logger::getLogger().info("\n");
-    sbmpi::util::Logger::getLogger().info("========================================================================================================================");
-    sbmpi::util::Logger::getLogger().info("                                               FINAL BLOCKCHAIN STATE                                                   ");
-    sbmpi::util::Logger::getLogger().info("========================================================================================================================");
+    sbmpi::util::Logger::getLogger().info(
+        "======================================================================"
+        "==================================================");
+    sbmpi::util::Logger::getLogger().info(
+        "                                               FINAL BLOCKCHAIN STATE "
+        "                                                  ");
+    sbmpi::util::Logger::getLogger().info(
+        "======================================================================"
+        "==================================================");
 
-    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain = blockchain->getBlockchain();
+    const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
+        blockchain->getBlockchain();
 
     for (size_t bindex = 0; bindex < chain.size(); bindex++) {
       const auto& block = chain[bindex];
@@ -410,36 +432,38 @@ int main(int argc, char** argv)
       std::stringstream ss;
       ss << "\n";
       ss << " [BLOCK " << bindex << "]\n";
-      ss << " ------------------------------------------------------------------------------------------------------------------------\n";
+      ss << " -----------------------------------------------------------------"
+            "-------------------------------------------------------\n";
       ss << " Hash:          " << block->getHash() << "\n";
-      ss << " Previous Hash: " << block->header.previousHash << "\n"; // Access header directly
+      ss << " Previous Hash: " << block->header.previousHash
+         << "\n";  // Access header directly
       ss << " Merkle Root:   " << block->header.merkleRoot << "\n";
       ss << " Tx Count:      " << block->transactions.size() << "\n";
-      ss << " ------------------------------------------------------------------------------------------------------------------------\n";
+      ss << " -----------------------------------------------------------------"
+            "-------------------------------------------------------\n";
 
       if (block->transactions.empty()) {
         ss << "    (Genesis Block or Empty)\n";
       } else {
         // Table Header
-        ss << "    " 
-           << std::left << std::setw(66) << "Transaction ID"
-           << std::left << std::setw(44) << "From (Sender)"
-           << std::left << std::setw(44) << "To (Receiver)"
-           << std::left << std::setw(15) << "Amount"
+        ss << "    " << std::left << std::setw(66) << "Transaction ID"
+           << std::left << std::setw(44) << "From (Sender)" << std::left
+           << std::setw(44) << "To (Receiver)" << std::left << std::setw(15)
+           << "Amount"
            << "Nonce\n";
-        
+
         ss << "    " << std::string(170, '-') << "\n";
 
         // Transaction Rows
         for (const auto& tx : block->transactions) {
-          ss << "    " 
-             << std::left << std::setw(66) << tx.id
-             << std::left << std::setw(44) << tx.from
-             << std::left << std::setw(44) << tx.to
-             << "$" << std::left << std::setw(14) << std::fixed << std::setprecision(2) << tx.amount
-             << tx.nonce << "\n"; // Make sure 'nonce' is implemented in Transaction class
+          ss << "    " << std::left << std::setw(66) << tx.id << std::left
+             << std::setw(44) << tx.from << std::left << std::setw(44) << tx.to
+             << "$" << std::left << std::setw(14) << std::fixed
+             << std::setprecision(2) << tx.amount << tx.nonce
+             << "\n";  // Make sure 'nonce' is implemented in Transaction class
         }
-        ss << " ========================================================================================================================";
+        ss << " ==============================================================="
+              "=========================================================";
       }
       // Log the entire block details at once
       sbmpi::util::Logger::getLogger().info(ss.str());

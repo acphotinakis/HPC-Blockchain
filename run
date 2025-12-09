@@ -1,0 +1,1 @@
+mpirun -np 8 build/main --shards 6 --transactions 100000 --run-id 1 --seed 42 --transaction-size 256 --faults 0.2 -v 1

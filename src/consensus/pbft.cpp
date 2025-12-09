@@ -125,58 +125,84 @@ namespace sbmpi
      * @param previousHash The hash of the previous block in the blockchain.
      * @return The MicroBlock that has reached consensus.
      */
-        std::pair<core::blocks::MicroBlock, int> PBFT::run(
-            const std::vector<core::state::Transaction>& transactions,
-            const std::string& previousHash,
-            int runID)
-        {
-          core::blocks::MicroBlock block;
-          int messagesExchanged = 0;
-    
-          // --- PHASE 0: PRE-PREPARE ---
-          if (myRank == leaderRank) {
-            util::Timer blockCreationTimer;
-            blockCreationTimer.start();
-    
-            std::string merkleRoot = util::merkle(transactions);
-            // Use the passed previousHash instead of the placeholder
-            block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
-            block.transactions = transactions;
-    
-            blockCreationTimer.stop();
-            double blockCreationTime = blockCreationTimer.elapsedSeconds();
-            util::BlockMetrics::record("total_simulation", runID, block.getHash(), "Micro", transactions.size(), blockCreationTime, previousHash);
-    
-            util::Logger::getLogger().info("PBFT Leader: Proposing block with " +
-                                           std::to_string(transactions.size()) +
-                                           " transactions.");
-            prePrepare(block);
-            messagesExchanged += (numNodes - 1) * 2; // block broadcast + pre-prepare
+    std::pair<core::blocks::MicroBlock, int> PBFT::run(
+        const std::vector<core::state::Transaction>& transactions,
+        const std::string& previousHash, int runID)
+    {
+      core::blocks::MicroBlock block;
+      int                      messagesExchanged = 0;
+
+      // --- PHASE 0: PRE-PREPARE ---
+      if (myRank == leaderRank) {
+        util::Timer blockCreationTimer;
+        blockCreationTimer.start();
+
+        std::string merkleRoot = util::merkle(transactions);
+        // Use the passed previousHash instead of the placeholder
+        block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
+        block.transactions = transactions;
+
+        blockCreationTimer.stop();
+        double blockCreationTime = blockCreationTimer.elapsedSeconds();
+        util::BlockMetrics::record("total_simulation", runID, block.getHash(),
+                                   "Micro", transactions.size(),
+                                   blockCreationTime, previousHash);
+
+        util::Logger::getLogger().info("PBFT Leader: Proposing block with " +
+                                       std::to_string(transactions.size()) +
+                                       " transactions.");
+        prePrepare(block);
+        messagesExchanged +=
+            (numNodes - 1) * 2;  // block broadcast + pre-prepare
+      } else {
+        // Replicas receive the block content
+        std::vector<char> blockData;
+        network::bcast(blockData, leaderRank, communicator);
+        messagesExchanged++;
+        block.deserialize(blockData);
+
+        std::atomic<bool> allValid(true);
+
+        // [STEP 1] Replica Verification Phase (Parallelized)
+        // Replicas must independently verify the block content before voting
+        // (PREPARE). This prevents a malicious leader from proposing invalid
+        // blocks.
+        int validCount   = 0;
+        int invalidCount = 0;
+
+#pragma omp parallel for reduction(+ : validCount, invalidCount)
+        for (size_t i = 0; i < block.transactions.size(); ++i) {
+          if (block.transactions[i].verify()) {
+            validCount++;
+            util::Logger::getLogger().error("Replica detected VERIFY in Tx: " +
+                                            block.transactions[i].id);
           } else {
-            // Replicas receive the block content
-            std::vector<char> blockData;
-            network::bcast(blockData, leaderRank, communicator);
-            messagesExchanged++;
-            block.deserialize(blockData);
-
-            std::atomic<bool> allValid(true);
-
-            #pragma omp parallel for
-            for (size_t i = 0; i < block.transactions.size(); ++i) {
-                if (!allValid) continue; // Skip if already failed
-                if (!block.transactions[i].verify()) {
-                    allValid = false;
-                }
-            }
-
-            if (!allValid) {
-                util::Logger::getLogger().error("Block verification failed. Replica will NOT vote.");
-                return {core::blocks::MicroBlock(), messagesExchanged}; 
-            }
-
-            util::Logger::getLogger().debug(
-                "PBFT Replica: Received block proposal.");
+            invalidCount++;
+            util::Logger::getLogger().error("Replica detected FAULT in Tx: " +
+                                            block.transactions[i].id);
           }
+        }
+
+        // [STEP 2] Logging and Decision
+        if (invalidCount > 0) {
+          util::Logger::getLogger().error(
+              "PBFT Replica " + std::to_string(myRank) +
+              ": REJECTING block due to " + std::to_string(invalidCount) +
+              " faulty transactions.");
+
+          // Abort consensus for this node by returning an empty result.
+          // In a full production system, this would trigger a VIEW-CHANGE.
+          return {{}, messagesExchanged};
+        }
+
+        util::Logger::getLogger().info(
+            "PBFT Replica " + std::to_string(myRank) +
+            ": Verified block proposal. (Valid: " + std::to_string(validCount) +
+            ")");
+
+        util::Logger::getLogger().debug(
+            "PBFT Replica: Received and verified block proposal.");
+      }
 
       std::string proposedBlockHash = block.getHash();
       int         quorum            = 2 * maxFaultyNodes + 1;

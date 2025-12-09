@@ -1,6 +1,7 @@
 /**
  * @file final_committee.cpp
- * @brief Implements the FinalCommittee class responsible for aggregating microblocks into macroblocks.
+ * @brief Implements the FinalCommittee class responsible for aggregating
+ * microblocks into macroblocks.
  */
 #include "../../../include/sbmpi/network/committee/final_committee.h"
 
@@ -14,8 +15,8 @@
 #include "../../../include/sbmpi/util/serialization.h"
 #include "mpi.h"
 
-#include "../../../include/sbmpi/util/timer.h"
 #include "../../../include/sbmpi/util/metrics.h"
+#include "../../../include/sbmpi/util/timer.h"
 
 namespace sbmpi
 {
@@ -25,8 +26,8 @@ namespace sbmpi
     {
 
       /**
-       * @brief Represents the Final Committee, responsible for collecting microblocks
-       * from shard leaders and assembling them into macroblocks.
+       * @brief Represents the Final Committee, responsible for collecting
+       * microblocks from shard leaders and assembling them into macroblocks.
        *
        * Inherits from the base Committee class.
        */
@@ -46,20 +47,21 @@ namespace sbmpi
       /**
        * @brief Collects microblocks from all shard leaders.
        *
-       * The Final Committee members listen for microblocks sent by the designated
-       * shard leaders.
-       * @param shardLeaderRanks A vector of global MPI ranks of the shard leaders.
+       * The Final Committee members listen for microblocks sent by the
+       * designated shard leaders.
+       * @param shardLeaderRanks A vector of global MPI ranks of the shard
+       * leaders.
        * @return A vector of collected MicroBlock objects.
        */
       std::vector<core::blocks::MicroBlock> FinalCommittee::collectMicroBlocks(
           const std::vector<int>& shardLeaderRanks)
       {
         std::vector<core::blocks::MicroBlock> microBlocks;
-        int world_rank;
+        int                                   world_rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
         util::Logger::getLogger().info(
-            "Final Committee: Rank " + std::to_string(world_rank) + 
+            "Final Committee: Rank " + std::to_string(world_rank) +
             " waiting for MicroBlocks from " +
             std::to_string(shardLeaderRanks.size()) + " shards.");
 
@@ -84,9 +86,9 @@ namespace sbmpi
         }
 
         util::Logger::getLogger().info(
-          "Final Committee: Received " + std::to_string(microBlocks.size()) +
-          " MicroBlocks from " + std::to_string(shardLeaderRanks.size()) + " shards."
-        );
+            "Final Committee: Received " + std::to_string(microBlocks.size()) +
+            " MicroBlocks from " + std::to_string(shardLeaderRanks.size()) +
+            " shards.");
 
         return microBlocks;
       }
@@ -95,15 +97,15 @@ namespace sbmpi
        * @brief Assembles a MacroBlock from a collection of MicroBlocks.
        *
        * This process involves adding the microblock hashes to the macroblock
-       * and flattening all transactions from the microblocks into the macroblock's
-       * transaction list.
-       * @param microBlocks A vector of MicroBlock objects collected from shards.
+       * and flattening all transactions from the microblocks into the
+       * macroblock's transaction list.
+       * @param microBlocks A vector of MicroBlock objects collected from
+       * shards.
        * @return A newly assembled MacroBlock.
        */
       core::blocks::MacroBlock FinalCommittee::assembleMacroBlock(
           const std::vector<core::blocks::MicroBlock>& microBlocks,
-          const core::blocks::Block* prevBlock,
-          int runID)
+          const core::blocks::Block* prevBlock, int runID)
       {
         util::Timer blockCreationTimer;
         blockCreationTimer.start();
@@ -116,7 +118,8 @@ namespace sbmpi
 
         // In a real system, fetch this from the Blockchain state
         macroBlock.header = core::blocks::BlockHeader(
-            prevBlock->header.height + 1, prevBlock->getHash(), prevBlock->header.merkleRoot);
+            prevBlock->header.height + 1, prevBlock->getHash(),
+            prevBlock->header.merkleRoot);
 
         int totalTx = 0;
         for (const auto& microBlock : microBlocks) {
@@ -131,7 +134,9 @@ namespace sbmpi
 
         blockCreationTimer.stop();
         double blockCreationTime = blockCreationTimer.elapsedSeconds();
-        util::BlockMetrics::record("total_simulation", runID, macroBlock.getHash(), "Macro", totalTx, blockCreationTime, prevBlock->getHash());
+        util::BlockMetrics::record("total_simulation", runID,
+                                   macroBlock.getHash(), "Macro", totalTx,
+                                   blockCreationTime, prevBlock->getHash());
 
         util::Logger::getLogger().info(
             "Final Committee: MacroBlock Assembled. Total Transactions "
@@ -140,6 +145,6 @@ namespace sbmpi
         return macroBlock;
       }
 
-    } // namespace committee
-  } // namespace network
-} // namespace sbmpi
+    }  // namespace committee
+  }  // namespace network
+}  // namespace sbmpi

@@ -1,9 +1,9 @@
 #ifndef SBMPI_TRANSACTION_H
 #define SBMPI_TRANSACTION_H
 
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
@@ -64,7 +64,8 @@ namespace sbmpi
                     double amount, uint64_t nonce);
 
         /**
-         * @brief Constructs a deterministic Keccak-256 hash using a Transaction data.
+         * @brief Constructs a deterministic Keccak-256 hash using a Transaction
+         * data.
          *
          * This method specifically only hashes the following member variables:
          * from, to, amount, and time.
@@ -94,7 +95,8 @@ namespace sbmpi
         /**
          * @brief Serializes transaction data to a `json` instance.
          *
-         * Uses Niels Lohmann's C++ JSON library for straightforward JSON parsing.
+         * Uses Niels Lohmann's C++ JSON library for straightforward JSON
+         * parsing.
          * @return A `json` instance containing transaction data in JSON format.
          */
         json toJSON() const;
@@ -102,7 +104,8 @@ namespace sbmpi
         /**
          * @brief Deserializes `json` data to populate a Transaction's data.
          *
-         * Uses Niels Lohmann's C++ JSON library for straightforward JSON reading.
+         * Uses Niels Lohmann's C++ JSON library for straightforward JSON
+         * reading.
          */
         void fromJSON(json& j);
 

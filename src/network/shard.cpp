@@ -92,38 +92,56 @@ namespace sbmpi
             "Shard " + std::to_string(id) + " Leader: Starting ingestion of " +
             std::to_string(numTx) + " transactions.");
 
+        // [STEP 1] Deserialize Phase (Must be Serial)
+        // We unpack all transactions into a temporary vector first.
         std::vector<core::state::Transaction> tempTxList;
         tempTxList.reserve(numTx);
         for (int i = 0; i < numTx; ++i) {
-            int txSize = util::unpack_int(buffer, offset);
-            std::vector<char> txData(buffer.begin() + offset, buffer.begin() + offset + txSize);
-            core::state::Transaction tx;
-            tx.deserialize(txData);
-            tempTxList.push_back(tx);
-            offset += txSize;
+          int                      txSize = util::unpack_int(buffer, offset);
+          std::vector<char>        txData(buffer.begin() + offset,
+                                          buffer.begin() + offset + txSize);
+          core::state::Transaction tx;
+          tx.deserialize(txData);
+          tempTxList.push_back(tx);
+          offset += txSize;
         }
 
+        // [STEP 2] Parallel Verification Phase (OpenMP)
+        // Verify signatures in parallel to speed up processing.
+        // We use a separate integer vector to store validity status (1=Valid,
+        // 0=Invalid)
         std::vector<int> validity(numTx, 0);
-
-        #pragma omp parallel for
+        int              validCount   = 0;
+        int              invalidCount = 0;
+#pragma omp parallel for reduction(+ : validCount, invalidCount)
         for (int i = 0; i < numTx; ++i) {
-            if (tempTxList[i].verify()) {
-                validity[i] = 1;
-            }
+          if (tempTxList[i].verify()) {
+            validity[i] = 1;
+            validCount++;
+          } else {
+            validity[i] = 0;
+            invalidCount++;
+          }
         }
 
+        // [STEP 3] Mempool Population (Serial)
+        // Add only valid transactions to the mempool based on the results.
         for (int i = 0; i < numTx; ++i) {
-            if (validity[i]) {
-                mempool.push_back(tempTxList[i]);
-            } else {
-                util::Logger::getLogger().error("Invalid Tx discarded: " + tempTxList[i].id);
-            }
+          if (validity[i]) {
+            mempool.push_back(tempTxList[i]);
+          } else {
+            util::Logger::getLogger().error(
+                "Shard " + std::to_string(id) +
+                ": FAILED validation for transaction " + tempTxList[i].id);
+          }
         }
 
         util::Logger::getLogger().info(
             "Shard " + std::to_string(id) +
             " Leader: Ingestion complete. Mempool size: " +
-            std::to_string(mempool.size()));
+            std::to_string(mempool.size()) +
+            " (Valid: " + std::to_string(validCount) +
+            ", Invalid: " + std::to_string(invalidCount) + ")");
       }
 
       // 2. CONSENSUS PHASE

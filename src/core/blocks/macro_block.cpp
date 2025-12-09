@@ -16,12 +16,13 @@ namespace sbmpi
     {
 
       /**
-       * @brief Represents a MacroBlock, which is a block that aggregates multiple MicroBlocks.
+       * @brief Represents a MacroBlock, which is a block that aggregates
+       * multiple MicroBlocks.
        *
-       * MacroBlocks are typically used in sharded blockchain architectures to finalize
-       * the state of multiple shards. They contain references (hashes) to the
-       * MicroBlocks they include, and can also contain their own transactions
-       * (e.g., cross-shard transactions, rewards).
+       * MacroBlocks are typically used in sharded blockchain architectures to
+       * finalize the state of multiple shards. They contain references (hashes)
+       * to the MicroBlocks they include, and can also contain their own
+       * transactions (e.g., cross-shard transactions, rewards).
        */
       MacroBlock::MacroBlock() {}
 
@@ -46,8 +47,9 @@ namespace sbmpi
       /**
        * @brief Serializes the MacroBlock into a vector of characters.
        *
-       * The serialization includes the block header, the hashes of all contained
-       * MicroBlocks, and any transactions directly within this MacroBlock.
+       * The serialization includes the block header, the hashes of all
+       * contained MicroBlocks, and any transactions directly within this
+       * MacroBlock.
        * @return A std::vector<char> containing the serialized MacroBlock data.
        */
       std::vector<char> MacroBlock::serialize() const
@@ -82,14 +84,15 @@ namespace sbmpi
        *
        * Reconstructs the MacroBlock from its serialized byte representation,
        * including its header, micro block hashes, and transactions.
-       * @param data The std::vector<char> containing the serialized MacroBlock data.
+       * @param data The std::vector<char> containing the serialized MacroBlock
+       * data.
        */
       void MacroBlock::deserialize(const std::vector<char>& data)
       {
         int offset = 0;
 
         // Deserialize header
-        int headerSize = util::unpack_int(data, offset);
+        int               headerSize = util::unpack_int(data, offset);
         std::vector<char> headerVec(data.begin() + offset,
                                     data.begin() + offset + headerSize);
         header.deserialize(headerVec);
@@ -106,8 +109,8 @@ namespace sbmpi
         transactions.clear();
         int numTransactions = util::unpack_int(data, offset);
         for (int i = 0; i < numTransactions; ++i) {
-          int txSize = util::unpack_int(data, offset);
-          std::vector<char> txData(data.begin() + offset,
+          int                txSize = util::unpack_int(data, offset);
+          std::vector<char>  txData(data.begin() + offset,
                                     data.begin() + offset + txSize);
           state::Transaction tx;
           tx.deserialize(txData);
@@ -116,6 +119,6 @@ namespace sbmpi
         }
       }
 
-    } // namespace blocks
-  } // namespace core
-} // namespace sbmpi
+    }  // namespace blocks
+  }  // namespace core
+}  // namespace sbmpi
