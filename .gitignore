@@ -16,11 +16,6 @@ build/
 
 .venv/
 
-# DEVELOPMENT
-
-.gemini_chats/
-.prompts/
-
 # DELETE THIS LATER
 # results/
 # build/
