@@ -29,10 +29,22 @@ CXX := mpic++
 # -Wall -Wextra: Enable all useful warnings.
 # -Iinclude:  Tell the compiler where to find our headers (e.g., "sbmpi/core/node.h").
 # -MMD -MP:   Generate dependency files (.d) for automatic header tracking.
-CXXFLAGS := -std=c++17 -g -Wall -Wextra -fopenmp -Iinclude -MMD -MP -Isecp256k1/include -Ijson/single_include
+CXXFLAGS := -std=c++17 -g -Wall -Wextra -Iinclude -MMD -MP -Isecp256k1/include -Ijson/single_include
 
 # Linker Flags: (MPI wrapper handles most linking)
 LDFLAGS := secp256k1/local/lib/libsecp256k1.a -lcrypto
+
+# --- OS-Specific OpenMP Flags ---
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+	# macOS: Apple Clang doesn't support -fopenmp directly. This fix
+	# requires installing the libomp library, e.g., via `brew install libomp`.
+	CXXFLAGS += -Xpreprocessor -fopenmp
+	LDFLAGS  += -lomp
+else
+	# Linux/Other: Assume GCC-like compiler with native OpenMP support.
+	CXXFLAGS += -fopenmp
+endif
 
 # --- Directories ---
 BUILD_DIR   := build
