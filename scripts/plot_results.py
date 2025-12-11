@@ -69,3 +69,7 @@ def plot_simulation_metrics(column_name, group_name, graph_name):
 def main():
     plot_simulation_metrics("TotalTime", "AvgTime", "Average Execution Time")
     plot_simulation_metrics("Throughput", "AvgThroughput", "Average Throughput Time")
+    
+    
+if __name__ == "__main__":
+    main()

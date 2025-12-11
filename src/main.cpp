@@ -466,6 +466,9 @@ int main(int argc, char** argv)
     sbmpi::util::Logger::getLogger().info(ss.str());
   }
 
+  // Wait for root to finish printing
+  MPI_Barrier(MPI_COMM_WORLD);
+
   if (shard_comm != MPI_COMM_NULL && shard_comm != MPI_COMM_WORLD) {
     MPI_Comm_free(&shard_comm);
   }

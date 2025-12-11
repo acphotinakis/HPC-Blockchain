@@ -25,12 +25,22 @@ namespace sbmpi
       buffer.insert(buffer.end(), bytes, bytes + sizeof(int));
     }
 
+    /**
+     * @brief Packs an int64 value into a character vector buffer.
+     * @param value The value to pack.
+     * @param buffer The std::vector<char> buffer to append the packed integer to.
+     */
     void pack_int64(int64_t value, std::vector<char>& buffer)
     {
       const char* bytes = reinterpret_cast<const char*>(&value);
       buffer.insert(buffer.end(), bytes, bytes + sizeof(int64_t));
     }
 
+    /**
+     * @brief Packs an unsigned int64 value into a character vector buffer.
+     * @param value The value to pack.
+     * @param buffer The std::vector<char> buffer to append the packed integer to.
+     */
     void pack_uint64(uint64_t value, std::vector<char>& buffer)
     {
       const char* bytes = reinterpret_cast<const char*>(&value);
@@ -62,6 +72,13 @@ namespace sbmpi
       buffer.insert(buffer.end(), value.begin(), value.end());
     }
 
+    /**
+     * @brief Packs a vector of unsigned chars into a character vector buffer.
+     *
+     * The vector's length is packed first as an integer, followed by the vector's contents.
+     * @param value The string to pack.
+     * @param buffer The std::vector<char> buffer to append the packed string to.
+     */
     void pack(const std::vector<unsigned char>& value, std::vector<char>& buffer)
     {
         int len = value.size();
@@ -83,6 +100,12 @@ namespace sbmpi
       return value;
     }
 
+    /**
+     * @brief Unpacks an int64 value from a character vector buffer.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked int64 value.
+     */
     int64_t unpack_int64_t(const std::vector<char>& buffer, int& offset)
     {
         int64_t value;
@@ -95,6 +118,12 @@ namespace sbmpi
         return value;
     }
 
+    /**
+     * @brief Unpacks an unsigned int64 value from a character vector buffer.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked unsigned int64 value.
+     */
     uint64_t unpack_uint64_t(const std::vector<char>& buffer, int& offset)
     {
         uint64_t value;
@@ -137,6 +166,14 @@ namespace sbmpi
       return value;
     }
 
+    /**
+     * @brief Unpacks a vector of unsigned chars from a character vector buffer.
+     *
+     * Reads the string's length first, then extracts the characters.
+     * @param buffer The std::vector<char> buffer to unpack from.
+     * @param offset A reference to the current offset in the buffer, which will be updated.
+     * @return The unpacked vector of unsigned chars.
+     */
     std::vector<unsigned char> unpack_vector_unsigned_char(const std::vector<char>& buffer, int& offset)
     {
         int len = unpack_int(buffer, offset);
