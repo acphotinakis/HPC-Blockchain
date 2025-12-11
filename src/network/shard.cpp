@@ -179,7 +179,7 @@ namespace sbmpi
           ": Consensus reached. MicroBlock Hash: " + microBlock.getHash());
 
       // 3. REPORTING PHASE
-      // If I am the Shard Leader, send the valid MicroBlock to the Final
+    // If I am the Shard Leader, send the valid MicroBlock to the Final
       // Committee Leader
       if (my_shard_rank == 0) {
         std::vector<char> serializedBlock = microBlock.serialize();
@@ -192,6 +192,8 @@ namespace sbmpi
             " Leader sent MicroBlock to Final Committee (Rank " +
             std::to_string(leaderRank) + ").");
       }
+
+      MPI_Barrier(communicator);
 
       return microBlock;
     }

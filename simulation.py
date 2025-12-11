@@ -4,10 +4,8 @@ import itertools
 import os
 
 # Define NP values, shards, and transaction counts
-np_values = [32, 64]
-#shards = [1, 4, 8, 16, 32]
-#np_values = [1]
-shards = [1]
+np_values = [8, 16, 32, 64]
+shards = [1, 4, 8, 16, 32]
 transactions = [10000, 50000, 100000, 200000, 500000]
 
 # Set MPI to allow oversubscription

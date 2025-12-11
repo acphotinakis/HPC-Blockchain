@@ -203,7 +203,7 @@ int main(int argc, char** argv)
              NodeRole::FINAL_COMMITTEE_MEMBER) {  // Note: This condition is
                                                   // redundant, but kept as is.
     finalCommittee =
-        std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm);
+        std::make_unique<sbmpi::network::committee::FinalCommittee>(shard_comm, config.numShards);
   }
 
   logger.info("Assigned Role: " + nodeRoleToString(myNode.getRole()) +
@@ -342,10 +342,10 @@ int main(int argc, char** argv)
                     " txs to Leader " + std::to_string(shardLeaderGlobalRank));
     }
 
-    // ---- Wait for all non-blocking sends to complete ----
-    // if (!pendingRequests.empty()) {
-    //     MPI_Waitall(pendingRequests.size(), pendingRequests.data(), MPI_STATUSES_IGNORE);
-    // }
+    // Wait for all non-blocking sends to complete
+    if (!pendingRequests.empty()) {
+        MPI_Waitall(pendingRequests.size(), pendingRequests.data(), MPI_STATUSES_IGNORE);
+    }
   }
 
   // --- Phase 5: Parallel Execution ---

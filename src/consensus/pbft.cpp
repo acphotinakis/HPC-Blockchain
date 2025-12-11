@@ -10,6 +10,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <thread>
 
 #include "../../include/sbmpi/consensus/pbft_messages.h"
 #include "../../include/sbmpi/network/mpi_wrapper.h"
@@ -126,153 +128,162 @@ namespace sbmpi
      * @return The MicroBlock that has reached consensus.
      */
     std::pair<core::blocks::MicroBlock, int> PBFT::run(
-        const std::vector<core::state::Transaction>& transactions,
-        const std::string& previousHash, int runID)
+      const std::vector<core::state::Transaction>& transactions,
+      const std::string& previousHash, int runID)
     {
       core::blocks::MicroBlock block;
-      int                      messagesExchanged = 0;
+      int messagesExchanged = 0;
 
       // --- PHASE 0: PRE-PREPARE ---
       if (myRank == leaderRank) {
-        util::Timer blockCreationTimer;
-        blockCreationTimer.start();
+          util::Timer blockCreationTimer;
+          blockCreationTimer.start();
 
-        std::string merkleRoot = util::merkle(transactions);
-        // Use the passed previousHash instead of the placeholder
-        block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
-        block.transactions = transactions;
+          std::string merkleRoot = util::merkle(transactions);
+          // Use the passed previousHash instead of the placeholder
+          block.header = core::blocks::BlockHeader(1, previousHash, merkleRoot);
+          block.transactions = transactions;
 
-        blockCreationTimer.stop();
-        double blockCreationTime = blockCreationTimer.elapsedSeconds();
-        util::BlockMetrics::record("total_simulation", runID, block.getHash(),
-                                   "Micro", transactions.size(),
-                                   blockCreationTime, previousHash);
+          blockCreationTimer.stop();
+          double blockCreationTime = blockCreationTimer.elapsedSeconds();
+          util::BlockMetrics::record("total_simulation", runID, block.getHash(),
+                                    "Micro", transactions.size(),
+                                    blockCreationTime, previousHash);
 
-        util::Logger::getLogger().info("PBFT Leader: Proposing block with " +
-                                       std::to_string(transactions.size()) +
-                                       " transactions.");
-        prePrepare(block);
-        messagesExchanged +=
-            (numNodes - 1) * 2;  // block broadcast + pre-prepare
+          util::Logger::getLogger().info("PBFT Leader: Proposing block with " +
+                                        std::to_string(transactions.size()) +
+                                        " transactions.");
+          prePrepare(block);
+          messagesExchanged +=
+              (numNodes - 1) * 2;  // block broadcast + pre-prepare
       } else {
-        // Replicas receive the block content
-        std::vector<char> blockData;
-        network::bcast(blockData, leaderRank, communicator);
-        messagesExchanged++;
-        block.deserialize(blockData);
+          // Replicas receive the block content
+          std::vector<char> blockData;
+          network::bcast(blockData, leaderRank, communicator);
+          messagesExchanged++;
+          block.deserialize(blockData);
 
-        std::atomic<bool> allValid(true);
+          std::atomic<bool> allValid(true);
 
-        // [STEP 1] Replica Verification Phase (Parallelized)
-        // Replicas must independently verify the block content before voting
-        // (PREPARE). This prevents a malicious leader from proposing invalid
-        // blocks.
-        int validCount   = 0;
-        int invalidCount = 0;
+          // [STEP 1] Replica Verification Phase (Parallelized)
+          // Replicas must independently verify the block content before voting
+          // (PREPARE). This prevents a malicious leader from proposing invalid
+          // blocks.
+          int validCount   = 0;
+          int invalidCount = 0;
 
-#pragma omp parallel for reduction(+ : validCount, invalidCount)
-        for (size_t i = 0; i < block.transactions.size(); ++i) {
-          if (block.transactions[i].verify()) {
-            validCount++;
-            util::Logger::getLogger().debug("Replica detected VERIFY in Tx: " +
-                                            block.transactions[i].id);
-          } else {
-            invalidCount++;
-            util::Logger::getLogger().error("Replica detected FAULT in Tx: " +
-                                            block.transactions[i].id);
+  #pragma omp parallel for reduction(+ : validCount, invalidCount)
+          for (size_t i = 0; i < block.transactions.size(); ++i) {
+              if (block.transactions[i].verify()) {
+                  validCount++;
+                  util::Logger::getLogger().debug("Replica detected VERIFY in Tx: " +
+                                                  block.transactions[i].id);
+              } else {
+                  invalidCount++;
+                  util::Logger::getLogger().error("Replica detected FAULT in Tx: " +
+                                                  block.transactions[i].id);
+              }
           }
-        }
 
-        // [STEP 2] Logging and Decision
-        if (invalidCount > 0) {
-          util::Logger::getLogger().error(
+          // [STEP 2] Logging and Decision
+          if (invalidCount > 0) {
+              util::Logger::getLogger().error(
+                  "PBFT Replica " + std::to_string(myRank) +
+                  ": REJECTING block due to " + std::to_string(invalidCount) +
+                  " faulty transactions.");
+
+              // Abort consensus for this node by returning an empty result.
+              // In a full production system, this would trigger a VIEW-CHANGE.
+              return {{}, messagesExchanged};
+          }
+
+          util::Logger::getLogger().info(
               "PBFT Replica " + std::to_string(myRank) +
-              ": REJECTING block due to " + std::to_string(invalidCount) +
-              " faulty transactions.");
+              ": Verified block proposal. (Valid: " + std::to_string(validCount) +
+              ")");
 
-          // Abort consensus for this node by returning an empty result.
-          // In a full production system, this would trigger a VIEW-CHANGE.
-          return {{}, messagesExchanged};
-        }
-
-        util::Logger::getLogger().info(
-            "PBFT Replica " + std::to_string(myRank) +
-            ": Verified block proposal. (Valid: " + std::to_string(validCount) +
-            ")");
-
-        util::Logger::getLogger().debug(
-            "PBFT Replica: Received and verified block proposal.");
+          util::Logger::getLogger().debug(
+              "PBFT Replica: Received and verified block proposal.");
       }
 
       std::string proposedBlockHash = block.getHash();
       int         quorum            = 2 * maxFaultyNodes + 1;
 
       // --- PHASE 1: PREPARE ---
-      if (myRank != leaderRank) {
-        prepare(proposedBlockHash);
-        messagesExchanged += numNodes - 1;
-      }
+      // FIX: ALL nodes (including leader) must send PREPARE
+      prepare(proposedBlockHash);
+      messagesExchanged += numNodes - 1;
 
-      int prepareCount = 0;
-      if (myRank == leaderRank)
-        prepareCount++;
-      else
-        prepareCount++;
-
+      int prepareCount = 1;  // Start by counting myself
       std::set<int> prepareVoters;
       prepareVoters.insert(myRank);
 
       while (prepareCount < quorum) {
-        MPI_Status status;
-        MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
+          MPI_Status status;
+          int flag = 0;
+          MPI_Iprobe(MPI_ANY_SOURCE, 0, communicator, &flag, &status);
+          
+          if (flag) {
+              int source = status.MPI_SOURCE;
+              std::vector<char> msgData = network::recv(source, 0, communicator);
+              messagesExchanged++;
+              PBFTMessage msg = deserializeMessage(msgData);
 
-        int               source  = status.MPI_SOURCE;
-        std::vector<char> msgData = network::recv(source, 0, communicator);
-        messagesExchanged++;
-        PBFTMessage msg = deserializeMessage(msgData);
-
-        if (msg.type == PBFTMessageType::PREPARE &&
-            msg.blockHash == proposedBlockHash) {
-          if (prepareVoters.find(msg.senderId) == prepareVoters.end()) {
-            prepareVoters.insert(msg.senderId);
-            prepareCount++;
+              if (msg.type == PBFTMessageType::PREPARE &&
+                  msg.blockHash == proposedBlockHash) {
+                  if (prepareVoters.find(msg.senderId) == prepareVoters.end()) {
+                      prepareVoters.insert(msg.senderId);
+                      prepareCount++;
+                  }
+              }
+          } else {
+              // Sleep to prevent hanging
+              std::this_thread::sleep_for(std::chrono::microseconds(100)); // 100µs
           }
-        }
       }
+      
       util::Logger::getLogger().debug("PBFT [Rank " + std::to_string(myRank) +
-                                      "]: PREPARED (Quorum " +
-                                      std::to_string(prepareCount) + ")");
+                                    "]: PREPARED (Quorum " +
+                                    std::to_string(prepareCount) + ")");
 
       // --- PHASE 2: COMMIT ---
+      // FIX: ALL nodes (including leader) must send COMMIT
       commit(proposedBlockHash);
       messagesExchanged += numNodes - 1;
 
-      int           commitCount = 1;
+      int commitCount = 1;  // Start by counting myself
       std::set<int> commitVoters;
       commitVoters.insert(myRank);
 
       while (commitCount < quorum) {
-        MPI_Status status;
-        MPI_Probe(MPI_ANY_SOURCE, 0, communicator, &status);
+          MPI_Status status;
+          int flag = 0;
+          MPI_Iprobe(MPI_ANY_SOURCE, 0, communicator, &flag, &status);
+          
+          if (flag) {
+              int source = status.MPI_SOURCE;
+              std::vector<char> msgData = network::recv(source, 0, communicator);
+              messagesExchanged++;
+              PBFTMessage msg = deserializeMessage(msgData);
 
-        int               source  = status.MPI_SOURCE;
-        std::vector<char> msgData = network::recv(source, 0, communicator);
-        messagesExchanged++;
-        PBFTMessage msg = deserializeMessage(msgData);
-
-        if (msg.type == PBFTMessageType::COMMIT &&
-            msg.blockHash == proposedBlockHash) {
-          if (commitVoters.find(msg.senderId) == commitVoters.end()) {
-            commitVoters.insert(msg.senderId);
-            commitCount++;
+              if (msg.type == PBFTMessageType::COMMIT &&
+                  msg.blockHash == proposedBlockHash) {
+                  if (commitVoters.find(msg.senderId) == commitVoters.end()) {
+                      commitVoters.insert(msg.senderId);
+                      commitCount++;
+                  }
+              }
+          } else {
+            // Sleep to prevent hanging
+              std::this_thread::sleep_for(std::chrono::microseconds(100)); // 100µs
           }
-        }
       }
+      
       util::Logger::getLogger().debug("PBFT [Rank " + std::to_string(myRank) +
-                                      "]: COMMITTED (Quorum " +
-                                      std::to_string(commitCount) + ")");
+                                    "]: COMMITTED (Quorum " +
+                                    std::to_string(commitCount) + ")");
 
-      // --- CONSENSUS REACHED ---
+      // Consensus reached, return block
       return {block, messagesExchanged};
     }
 
