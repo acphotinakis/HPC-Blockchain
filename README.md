@@ -5,49 +5,79 @@
 ```
 .
 ├── Makefile
+├── CMakeLists.txt
+├───.clang-format
+├───.clangd
+├───.geminiignore
+├───.gitignore
+├── README.md
+├── simulation.py
+├── walk_thru.py
 ├── build/
 ├── docs/
-│   ├── PROPOSAL.md
-│   ├── IMPLEMENTATION_PLAN.md
-│   ├── STRUCTURE.md
-│   ├── PERFORMANCE.md
-│   └── blockchain_fundamentals.md
+│   ├── ... (project documentation)
 ├── include/
-│   ├── sbmpi/
-│   │   ├── core/
-│   │   │   ├── block.h
-│   │   │   ├── blockchain.h
-│   │   │   ├── transaction.h
-│   │   │   └── node.h
-│   │   ├── consensus/
-│   │   │   └── pbft.h
-│   │   ├── network/
-│   │   │   ├── shard.h
-│   │   │   └── final_committee.h
-│   │   └── util/
-│   │       ├── config.h
-│   │       ├── logging.h
-│   │       └── timer.h
-├── resources/
-│   └── Blockchain.pdf
+│   └── sbmpi/
+│       ├── consensus/
+│       │   ├── pbft_messages.h
+│       │   └── pbft.h
+│       ├── core/
+│       │   ├── blockchain.h
+│       │   ├── node.h
+│       │   ├── blocks/
+│       │   │   ├── block.h
+│       │   │   ├── blockheader.h
+│       │   │   ├── macro_block.h
+│       │   │   └── micro_block.h
+│       │   ├── mempool/
+│       │   │   └── mempool.h
+│       │   └── state/
+│       │       ├── genesis.h
+│       │       ├── state.h
+│       │       ├── transaction.h
+│       │       └── wallet.h
+│       ├── network/
+│       │   ├── cross_shard.h
+│       │   ├── mpi_wrapper.h
+│       │   ├── shard.h
+│       │   └── committee/
+│       │       ├── committee.h
+│       │       └── final_committee.h
+│       └── util/
+│           ├── config.h
+│           ├── crypto.h
+│           ├── errors.h
+│           ├── generator.h
+│           ├── logging.h
+│           ├── metrics.h
+│           ├── serialization.h
+│           ├── threadpool.h
+│           └── timer.h
+├── json/
+│   └── single_include/nlohmann/json.hpp
 ├── scripts/
 │   ├── run_experiment.sh
 │   └── plot_results.py
+├── secp256k1/
+│   └── ... (vendored crypto library)
 ├── src/
-│   ├── core/
-│   │   ├── block.cpp
-│   │   ├── blockchain.cpp
-│   │   ├── transaction.cpp
-│   │   └── node.cpp
+│   ├── main.cpp
 │   ├── consensus/
+│   │   ├── pbft_messages.cpp
 │   │   └── pbft.cpp
+│   ├── core/
+│   │   ├── blockchain.cpp
+│   │   ├── node.cpp
+│   │   ├── blocks/
+│   │   │   ├── ... (block implementations)
+│   │   ├── mempool/
+│   │   │   └── mempool.cpp
+│   │   └── state/
+│   │       ├── ... (state implementations)
 │   ├── network/
-│   │   ├── shard.cpp
-│   │   └── final_committee.cpp
-│   ├── util/
-│   │   ├── logging.cpp
-│   │   └── timer.cpp
-│   └── main.cpp
+│   │   ├── ... (network implementations)
+│   └── util/
+│       ├── ... (utility implementations)
 └── tests/
     ├── test_pbft.cpp
     └── test_sharding.cpp
@@ -97,7 +127,7 @@ The project is organized into several key directories:
 -   `/include`: C++ header files corresponding to the source code.
 -   `/build`: Compiled executables and object files.
 -   `/tests`: Unit and integration tests for core components.
--   `/results`: Output data and graphs from performance experiments.
+-   `/metrics`: Output data and graphs from performance experiments.
 -   `/scripts`: Helper scripts for running experiments and plotting results.
 -   `/docs`: Supplementary project documentation, including `PERFORMANCE.md`.
 
@@ -116,7 +146,7 @@ For a detailed breakdown of each directory and file, please refer to `STRUCTURE.
     ./scripts/run_experiment.sh <parameters>
     ```
 
-3.  **Analyzing Results:** Use the plotting script to visualize the performance data stored in `/results`.
+3.  **Analyzing Results:** Use the plotting script to visualize the performance data stored in `/metrics`.
     ```bash
     python scripts/plot_results.py
     ```
