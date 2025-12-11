@@ -120,3 +120,122 @@ Visual diagrams help clarify the project's architecture and control flow.
         2.  **PRE-PREPARED**: A replica node transitions to this state after it receives and validates the leader's `MicroBlock` proposal. It then broadcasts a `PREPARE` message. The code for this is part of the initial block reception and validation at the beginning of `PBFT::run`.
         3.  **PREPARED**: A node enters this state after the first `while (prepareCount < quorum)` loop completes. This loop ensures the node has received `2f + 1` `PREPARE` messages from its peers, confirming that a sufficient number of honest nodes have validated the same proposal. Upon exiting this loop, the node broadcasts a `COMMIT` message.
         4.  **COMMITTED**: The node enters the final state after the second `while (commitCount < quorum)` loop completes, guaranteeing it has received `2f + 1` `COMMIT` messages. At this point, the block is irrevocably committed, and the `PBFT::run` function returns the finalized `MicroBlock`.
+
+---
+
+# **INPUT SECTION — FILLED IN**
+
+**Topics to Explain:**
+
+*   **IV. DOCUMENTED CODE**
+    *   **Codebase Structure:**
+        *   `src/core/`: Core data structures (Node, Blockchain, Transaction).
+        *   `src/consensus/`: Consensus logic (PBFT).
+        *   `src/network/`: Communication wrappers (Shard, Committee).
+    *   **Documentation:**
+        *   State that all source files utilize **Doxygen-style** comments (e.g., `/** ... */` in `shard.cpp` and `pbft.cpp`) to explain class responsibilities and method logic.
+    *   **Key Implementation Details:**
+        *   Reference `src/util/serialization.cpp` for the custom byte-packing logic required to send complex C++ objects over MPI.
+*   **V. MANUAL**
+    *   **Build Instructions:**
+        *   Command: `make` (generates `build/main` binary).
+        *   Dependencies: OpenMPI, OpenSSL, C++17 compiler.
+    *   **Execution Guide:**
+        *   Provide the command structure and an example based on the `Makefile`'s `run` target.
+
+**How These Topics Are Used in the Project:**
+
+This section details the project's internal structure and operational procedures, grounded in the codebase itself.
+
+---
+
+## IV. DOCUMENTED CODE
+
+### Codebase Structure
+
+The project's source code is organized into a modular structure under the `src/` directory, which aligns with its conceptual components:
+
+*   **`src/core/`**: This directory contains the definitions for the project's fundamental data structures. It includes classes for the `Blockchain` itself (`blockchain.cpp`), the `Node` (`node.cpp`), `Transaction` (`state/transaction.cpp`), and the various block types like `Block` (`blocks/block.cpp`), `MicroBlock` (`blocks/micro_block.cpp`), and `MacroBlock` (`blocks/macro_block.cpp`). These components represent the core objects that are manipulated and exchanged throughout the simulation.
+
+*   **`src/consensus/`**: This directory houses the logic for achieving agreement among nodes. Its primary component is the implementation of the **Practical Byzantine Fault Tolerance** algorithm in `pbft.cpp`. This code is responsible for managing the multi-phase commit process required for a shard to validate a `MicroBlock`.
+
+*   **`src/network/`**: This directory is responsible for managing communication between simulated nodes. It contains high-level abstractions like `Shard` (`shard.cpp`) and `FinalCommittee` (`committee/final_committee.cpp`) that encapsulate group behaviors. Critically, it also includes `mpi_wrapper.cpp`, which provides simplified `send` and `recv` functions built on top of MPI for exchanging serialized data across the network.
+
+### Documentation
+
+The codebase is documented using **Doxygen-style** comments. As seen in files like `src/network/shard.cpp` and `src/consensus/pbft.cpp`, this convention is applied at multiple levels:
+*   **File-level headers** (`@file`, `@brief`) describe the purpose of the entire file.
+*   **Class comments** explain the role and responsibilities of a class (e.g., `Shard`, `PBFT`).
+*   **Method comments** (`@brief`, `@param`, `@return`) detail the purpose, inputs, and outputs of individual functions.
+
+This documentation style allows for clear in-code explanations and enables the automatic generation of technical documentation.
+
+### Key Implementation Details
+
+To transmit complex C++ objects (like `Transaction` or `MicroBlock`) over MPI, which only handles raw byte streams, the project uses a custom serialization system defined in **`src/util/serialization.cpp`**. This file provides a suite of `pack` and `unpack` functions that perform manual byte-packing.
+
+*   The `pack()` functions convert primitive types (e.g., `int`, `double`, `std::string`) into a sequence of bytes and append them to a `std::vector<char>` buffer.
+*   The `unpack_*()` functions read from this byte buffer at a given offset, reconstruct the original data type, and advance the offset.
+
+This byte-level serialization is essential for converting the project's C++ data structures into a portable format that can be sent and received by the `sbmpi::network::send` and `sbmpi::network::recv` wrappers, which in turn call the underlying MPI communication routines.
+
+## V. MANUAL
+
+### Build Instructions
+
+The project is compiled using the `make` utility, as defined in the `Makefile`.
+
+*   **Command**: Running `make` or `make all` from the project root will compile the entire source and link the final executable.
+    ```bash
+    make
+    ```
+    This generates the main binary at `build/main`.
+
+*   **Dependencies**: The `Makefile` specifies the required dependencies:
+    *   **C++17 Compiler**: Indicated by the `-std=c++17` flag.
+    *   **OpenMPI**: The `mpic++` compiler wrapper is used for compilation and linking.
+    *   **OpenSSL**: Linked via the `-lcrypto` flag, it provides the cryptographic functions used in `src/util/crypto.cpp`.
+    *   **OpenMP**: The `-fopenmp` flag is used to enable multi-threaded parallelism for tasks like signature verification.
+
+### Execution Guide
+
+The simulation is executed via the `mpirun` command, which launches multiple processes. The `Makefile` provides a convenient `run` target that demonstrates a typical execution.
+
+*   **Command Structure**:
+    ```bash
+    mpirun -np <number_of_processes> build/main [ARGUMENTS]
+    ```
+
+*   **Example from `Makefile`**:
+    The following command runs the simulation on 8 processes, configured to create 6 shards. It injects 100,000 transactions and sets other parameters for the run.
+    ```bash
+    mpirun -np 8 build/main --shards 6 --transactions 100000 --run-id 1 --seed 42 --transaction-size 256 --faults 0.2 -v 1
+    ```
+
+*   **Key Arguments**:
+    *   `--shards <N>`: Divides the processes into `N` shards.
+    *   `--transactions <N>`: Sets the total number of transactions to be generated and processed.
+    *   `--faults <F>`: Specifies the fraction of faulty transactions to inject.
+    *   `-v <level>`: Sets the verbosity level for logging.
+
+---
+
+## VI. CONCLUSIONS
+
+### Summary
+
+The project successfully simulated a parallel blockchain architecture that aims to overcome the single-thread limitations of traditional ledgers by utilizing sharding for concurrent transaction processing. This approach, where each shard runs an intra-shard PBFT consensus `~\cite{Castro_PracticalByzantineFaultTolerance}`, achieves higher throughput compared to monolithic blockchain designs `~\cite{Yu_ShardinginBlockchains}`.
+
+### Critique & Challenges
+
+*   **Serialization Overhead**: The custom byte-packing logic implemented in `src/util/serialization.cpp` is crucial for transmitting complex C++ objects over MPI. However, this process, involving `memcpy` operations and `std::vector<char>` manipulations, introduces a significant CPU overhead as objects are converted to and from byte streams, which can impact overall simulation performance.
+
+*   **Aggregation Bottleneck**: The current architecture designates a single `FinalCommittee` (implemented in `src/network/committee/final_committee.cpp`) to `collectMicroBlocks` from all shards and `assembleMacroBlock`. This centralized aggregation point represents a potential performance bottleneck and a single point of failure. As the number of shards increases, the load on the `FinalCommittee` leader will grow proportionally, limiting the overall scalability gained from sharding `~\cite{Amiri_ShardingPermissionedBlockchains}`.
+
+*   **Fault Tolerance**: While the intra-shard consensus mechanism, PBFT, inherently provides fault tolerance against Byzantine failures by tolerating up to `f` faulty nodes `~\cite{Castro_PracticalByzantineFaultTolerance}`, the current simulation's fault handling is limited. Specifically, the model is "fault aware" but lacks dynamic recovery mechanisms. A crash of a shard leader or the final committee leader currently aborts the entire simulation, rather than initiating a view change or leader re-election process as discussed in robust distributed systems `~\cite{HURSEY201215}`.
+
+### Future Work
+
+*   **Cross-Shard Transactions**: A significant area for future development is the implementation of atomic cross-shard transactions. The `src/network/cross_shard.cpp` file exists as a stub, indicating a planned feature to enable transactions that involve state changes across multiple shards. Implementing this would address the challenges of maintaining atomicity and consistency when transactions interact with data spread across different partitioned states `~\cite{Yu_ShardinginBlockchains}`.
+
+*   **Decentralized Final Committee**: To mitigate the aggregation bottleneck, future work should explore decentralizing the Final Committee. This would involve distributing the aggregation responsibility among multiple nodes or implementing a multi-layered consensus mechanism to avoid a single point of congestion and failure, further enhancing the system's scalability and robustness.
