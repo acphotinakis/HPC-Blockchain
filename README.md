@@ -102,6 +102,50 @@ Our solution employs a sharding method to parallelize blockchain computations. T
 
 This approach enables multiple committees to reach consensus in parallel, significantly increasing transaction throughput.
 
+### Architectural Deep Dive & Simulation Flow
+
+This project simulates a sharded blockchain network using C++ and the Message Passing Interface (MPI). The architecture is designed to clearly separate concerns and demonstrate the performance benefits of parallel transaction processing.
+
+#### Core Components & Node Roles
+
+The network is composed of nodes, each an independent MPI process. Nodes are assigned one of three roles:
+
+1.  **Shard Member:** The workhorse of the network. These nodes are grouped into **Shards** (or **Committees**) and are responsible for processing a subset of all transactions. They participate in the intra-shard consensus protocol.
+2.  **Shard Leader:** One node within each shard is designated as the leader. The leader receives transactions from the main process, proposes new `MicroBlock`s to its fellow shard members, and initiates the consensus process.
+3.  **Final Committee Member:** A small, dedicated group of nodes responsible for finalizing the blockchain. The leader of this committee gathers the `MicroBlock`s that have achieved consensus within each shard and assembles them into a definitive `MacroBlock`, which is then added to the global blockchain.
+
+This hierarchical structure is achieved by splitting `MPI_COMM_WORLD` into separate communicators for each shard and one for the final committee, allowing for clean and efficient intra-group communication.
+
+#### Simulation Lifecycle
+
+A typical simulation run proceeds through the following phases:
+
+1.  **Initialization & Node Assignment:**
+    -   MPI is initialized, and each process (node) determines its global rank and the total number of processes.
+    -   Based on the `--shards` parameter, the `determineNodeAssignment` function assigns a role (`Shard Member`, `Shard Leader`, `Final Committee Member`) and a group ID (`shard_color`) to each node.
+    -   MPI communicators are split, creating isolated communication groups for each shard and the final committee.
+
+2.  **Transaction Generation & Distribution:**
+    -   The root process (rank 0) generates a configurable number of mock transactions using `generateMockTransactions`. This function also handles signing transactions with mock wallets and can inject faulty transactions for testing resilience.
+    -   These transactions are partitioned and sent from the root process directly to the designated **Shard Leader** for each shard.
+
+3.  **Intra-Shard Consensus (PBFT):**
+    -   Inside each shard, the nodes execute the Practical Byzantine Fault Tolerance (PBFT) protocol to agree on the next block of transactions.
+    -   The Shard Leader proposes a `MicroBlock`.
+    -   Shard Members receive the proposal, validate the transactions within it (in parallel using OpenMP), and then proceed through the PBFT phases: **Pre-Prepare**, **Prepare**, and **Commit**.
+    -   A block is considered committed once a quorum of `2f+1` nodes (where `f` is the number of faulty nodes the shard can tolerate) has broadcasted their commitment.
+    -   The output of this phase is a `MicroBlock` that has been validated and agreed upon by its shard.
+
+4.  **Aggregation and Finalization:**
+    -   Each Shard Leader sends its newly created `MicroBlock` to the leader of the **Final Committee**.
+    -   The Final Committee leader collects one `MicroBlock` from each shard.
+    -   It then assembles these into a single `MacroBlock`, which contains the hashes of all included microblocks and an aggregated list of all their transactions.
+    -   This `MacroBlock` is added to the shared `Blockchain` data structure, finalizing the state of all transactions from that round.
+
+5.  **Metrics and Analysis:**
+    -   Throughout the simulation, `Timer` and `Metrics` utilities record performance data, including total execution time, throughput (transactions per second), block creation times, and consensus duration for each shard.
+    -   This data is written to CSV files in the `/metrics` directory, which can be visualized using the `scripts/plot_results.py` script.
+
 ## Implementation Details
 
 -   **Language:** C++ (for performance and low-level control).
