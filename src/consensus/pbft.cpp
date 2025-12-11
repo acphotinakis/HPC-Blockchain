@@ -214,13 +214,11 @@ namespace sbmpi
       }
 
       int prepareCount = 0;
-      if (myRank == leaderRank)
-        prepareCount++;
-      else
-        prepareCount++;
-
       std::set<int> prepareVoters;
-      prepareVoters.insert(myRank);
+      if (myRank != leaderRank) {
+          prepareCount++;
+          prepareVoters.insert(myRank);
+      }
 
       while (prepareCount < quorum) {
         MPI_Status status;
