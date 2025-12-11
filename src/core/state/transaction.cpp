@@ -105,8 +105,13 @@ namespace sbmpi
           return false;
         }
 
+        // Check the new hash with the old hash
         std::vector<unsigned char> newId = constructHash();
-        return util::verify(newId, signatureRaw);
+        if (newId != rawId) {
+          return false;
+        }
+
+        return util::verify(rawId, signatureRaw);
       }
 
       /**

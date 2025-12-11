@@ -174,7 +174,7 @@ namespace sbmpi
         for (size_t i = 0; i < block.transactions.size(); ++i) {
           if (block.transactions[i].verify()) {
             validCount++;
-            util::Logger::getLogger().error("Replica detected VERIFY in Tx: " +
+            util::Logger::getLogger().debug("Replica detected VERIFY in Tx: " +
                                             block.transactions[i].id);
           } else {
             invalidCount++;

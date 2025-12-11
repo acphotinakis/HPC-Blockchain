@@ -411,16 +411,11 @@ int main(int argc, char** argv)
     //             " seconds.");
 
     // --- DEEP DIVE BLOCKCHAIN PRINTING ---
-    sbmpi::util::Logger::getLogger().info("\n");
-    sbmpi::util::Logger::getLogger().info(
-        "======================================================================"
-        "==================================================");
-    sbmpi::util::Logger::getLogger().info(
-        "                                               FINAL BLOCKCHAIN STATE "
-        "                                                  ");
-    sbmpi::util::Logger::getLogger().info(
-        "======================================================================"
-        "==================================================");
+    std::stringstream ss;
+    ss  << "\n"
+        << "======================================================================\n"
+        << "                       FINAL BLOCKCHAIN STATE\n"
+        << "======================================================================";
 
     const std::vector<std::unique_ptr<sbmpi::core::blocks::Block>>& chain =
         blockchain->getBlockchain();
@@ -429,7 +424,6 @@ int main(int argc, char** argv)
       const auto& block = chain[bindex];
       if (!block) continue;
 
-      std::stringstream ss;
       ss << "\n";
       ss << " [BLOCK " << bindex << "]\n";
       ss << " -----------------------------------------------------------------"
@@ -442,32 +436,34 @@ int main(int argc, char** argv)
       ss << " -----------------------------------------------------------------"
             "-------------------------------------------------------\n";
 
-      if (block->transactions.empty()) {
-        ss << "    (Genesis Block or Empty)\n";
-      } else {
-        // Table Header
-        ss << "    " << std::left << std::setw(66) << "Transaction ID"
-           << std::left << std::setw(44) << "From (Sender)" << std::left
-           << std::setw(44) << "To (Receiver)" << std::left << std::setw(15)
-           << "Amount"
-           << "Nonce\n";
+      // Uncomment if want to print all transactions
+      // if (block->transactions.empty()) {
+      //   ss << "    (Genesis Block or Empty)\n";
+      // } else {
+      //   // Table Header
+      //   ss << "    " << std::left << std::setw(66) << "Transaction ID"
+      //      << std::left << std::setw(44) << "From (Sender)" << std::left
+      //      << std::setw(44) << "To (Receiver)" << std::left << std::setw(15)
+      //      << "Amount"
+      //      << "Nonce\n";
 
-        ss << "    " << std::string(170, '-') << "\n";
+      //   ss << "    " << std::string(170, '-') << "\n";
 
-        // Transaction Rows
-        for (const auto& tx : block->transactions) {
-          ss << "    " << std::left << std::setw(66) << tx.id << std::left
-             << std::setw(44) << tx.from << std::left << std::setw(44) << tx.to
-             << "$" << std::left << std::setw(14) << std::fixed
-             << std::setprecision(2) << tx.amount << tx.nonce
-             << "\n";  // Make sure 'nonce' is implemented in Transaction class
-        }
-        ss << " ==============================================================="
-              "=========================================================";
-      }
+      //   // Transaction Rows
+      //   for (const auto& tx : block->transactions) {
+      //     ss << "    " << std::left << std::setw(66) << tx.id << std::left
+      //        << std::setw(44) << tx.from << std::left << std::setw(44) << tx.to
+      //        << "$" << std::left << std::setw(14) << std::fixed
+      //        << std::setprecision(2) << tx.amount << tx.nonce
+      //        << "\n";  // Make sure 'nonce' is implemented in Transaction class
+      //   }
+      //   ss << " ==============================================================="
+      //         "=========================================================";
+      // }
       // Log the entire block details at once
-      sbmpi::util::Logger::getLogger().info(ss.str());
     }
+
+    sbmpi::util::Logger::getLogger().info(ss.str());
   }
 
   if (shard_comm != MPI_COMM_NULL && shard_comm != MPI_COMM_WORLD) {
