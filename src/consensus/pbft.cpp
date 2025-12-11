@@ -210,7 +210,6 @@ namespace sbmpi
       int         quorum            = 2 * maxFaultyNodes + 1;
 
       // --- PHASE 1: PREPARE ---
-      // FIX: ALL nodes (including leader) must send PREPARE
       prepare(proposedBlockHash);
       messagesExchanged += numNodes - 1;
 
@@ -247,7 +246,6 @@ namespace sbmpi
                                     std::to_string(prepareCount) + ")");
 
       // --- PHASE 2: COMMIT ---
-      // FIX: ALL nodes (including leader) must send COMMIT
       commit(proposedBlockHash);
       messagesExchanged += numNodes - 1;
 
