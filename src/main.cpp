@@ -288,40 +288,64 @@ int main(int argc, char** argv)
       partitioned_txs[shardId].push_back(allTransactions[i]);
     }
 
+    std::vector<std::vector<char>> pendingBuffers;   // Owns the data
+    std::vector<MPI_Request>       pendingRequests;  // Tracks async sends
+
+    pendingBuffers.reserve(config.numShards);
+    pendingRequests.reserve(config.numShards);
+
     for (int shardId = 0; shardId < config.numShards; ++shardId) {
-      sbmpi::util::ShardMetrics::record("total_simulation", config.runID,
-                                        shardId,
-                                        partitioned_txs[shardId].size());
-      // Calculate global rank of Shard Leader
-      // Logic: FC takes first N slots. Remaining slots are shards.
-      // Shard Pool Size = World - FC.
-      // We must replicate logic from determineNodeAssignment to identify leader
-      // rank. Simplified calculation:
-      int shardPoolSize     = world_size - FINAL_COMMITTEE_SIZE;
-      int nodesPerShardBase = shardPoolSize / config.numShards;
-      int remainder         = shardPoolSize % config.numShards;
+        sbmpi::util::ShardMetrics::record("total_simulation",
+                                          config.runID,
+                                          shardId,
+                                          partitioned_txs[shardId].size());
 
-      int offset = FINAL_COMMITTEE_SIZE;  // Start after FC
-      for (int k = 0; k < shardId; ++k) {
-        offset += nodesPerShardBase + (k < remainder ? 1 : 0);
-      }
-      int shardLeaderGlobalRank = offset;  // The first node in the shard block
+        int shardPoolSize     = world_size - FINAL_COMMITTEE_SIZE;
+        int nodesPerShardBase = shardPoolSize / config.numShards;
+        int remainder         = shardPoolSize % config.numShards;
 
-      if (partitioned_txs[shardId].empty()) continue;
+        int offset = FINAL_COMMITTEE_SIZE;
+        for (int k = 0; k < shardId; ++k) {
+            offset += nodesPerShardBase + (k < remainder ? 1 : 0);
+        }
+        int shardLeaderGlobalRank = offset;
 
-      std::vector<char> buffer;
-      auto&             tx_list = partitioned_txs[shardId];
-      pack(static_cast<int>(tx_list.size()), buffer);
-      for (const auto& tx : tx_list) {
-        std::vector<char> tx_data = tx.serialize();
-        pack(static_cast<int>(tx_data.size()), buffer);
-        buffer.insert(buffer.end(), tx_data.begin(), tx_data.end());
-      }
+        if (partitioned_txs[shardId].empty())
+            continue;
 
-      sbmpi::network::send(buffer, shardLeaderGlobalRank, 0, MPI_COMM_WORLD);
-      logger.debug("Sent " + std::to_string(partitioned_txs[shardId].size()) +
-                   " txs to Leader " + std::to_string(shardLeaderGlobalRank));
+        // ---- Build buffer (always send, even if empty) ----
+        pendingBuffers.emplace_back();            // Add new buffer
+        auto& buffer = pendingBuffers.back();
+
+        auto& tx_list = partitioned_txs[shardId];
+        pack(static_cast<int>(tx_list.size()), buffer);  // will be 0 for empty partitions
+
+        for (const auto& tx : tx_list) {
+            std::vector<char> tx_data = tx.serialize();
+            pack(static_cast<int>(tx_data.size()), buffer);
+            buffer.insert(buffer.end(), tx_data.begin(), tx_data.end());
+        }
+
+        // Send a non-blocking send (sends the 4-byte size + any payload)
+        MPI_Request request;
+        MPI_Isend(buffer.data(),
+                  static_cast<int>(buffer.size()),
+                  MPI_BYTE,
+                  shardLeaderGlobalRank,
+                  0,
+                  MPI_COMM_WORLD,
+                  &request);
+
+        pendingRequests.push_back(request);
+
+        logger.debug("Sent " + std::to_string(tx_list.size()) +
+                    " txs to Leader " + std::to_string(shardLeaderGlobalRank));
     }
+
+    // ---- Wait for all non-blocking sends to complete ----
+    // if (!pendingRequests.empty()) {
+    //     MPI_Waitall(pendingRequests.size(), pendingRequests.data(), MPI_STATUSES_IGNORE);
+    // }
   }
 
   // --- Phase 5: Parallel Execution ---
