@@ -1,5 +1,17 @@
 # Parallelizing Blockchain Computations via Sharding (using PBFT and MPI)
 
+## TL;DR
+
+This project implements a **sharded, PBFT-based blockchain simulator** in **C++ using MPI**
+to demonstrate how **parallel consensus** improves transaction throughput and latency.
+
+We compare:
+- a **serial PBFT baseline**
+- against a **parallel sharded architecture**
+
+and show **near-linear throughput scaling** as shard count increases.
+
+
 ## Project Structure
 
 ```

@@ -1,0 +1,137 @@
+# ⛓️ SBMPI: Parallelizing Blockchain Computations via Sharding
+
+**A high-performance C++/MPI simulation of a sharded blockchain network using PBFT consensus to achieve horizontal scalability.**
+
+---
+
+## TL;DR
+
+This project implements a **sharded, PBFT-based blockchain simulator** in **C++ using MPI**
+to demonstrate how **parallel consensus** improves transaction throughput and latency.
+
+We compare:
+- a **serial PBFT baseline**
+- against a **parallel sharded architecture**
+
+and show **near-linear throughput scaling** as shard count increases.
+
+---
+
+## Overview
+
+This project addresses the critical scalability bottlenecks found in traditional, sequential blockchain architectures. By implementing a parallel blockchain algorithm using **Sharding** and **Message Passing Interface (MPI)**, the system demonstrates significant improvements in transaction throughput and latency.
+
+### ⚡ Key Value Proposition
+
+* **Horizontal Scalability:** Distributes the transaction load across independent committees (shards).
+* **High-Performance Consensus:** Utilizes the **Practical Byzantine Fault Tolerance (PBFT)** algorithm for intra-shard agreement.
+* **MPI Integration:** Simulates a true distributed environment where each node is an independent process.
+* **Parallel Validation:** Leverages **OpenMP** for multi-threaded signature verification within nodes.
+
+---
+
+## 🏗️ Architecture & Simulation Flow
+
+The network is composed of independent MPI processes, each assigned a specific role to simulate a tiered consensus environment.
+
+### Node Roles
+
+1. **Shard Member:** The workhorse nodes that validate transactions and participate in the 3-phase PBFT consensus protocol.
+2. **Shard Leader:** One leader per shard who proposes `MicroBlocks` and initiates the consensus process.
+3. **Final Committee Member:** A dedicated group responsible for gathering validated `MicroBlocks` and assembling them into the definitive `MacroBlock` for the global blockchain.
+
+### Lifecycle of a Transaction
+
+* **1. Distribution:** The root process (Rank 0) generates and partitions transactions, sending them to the appropriate **Shard Leaders**.
+* **2. Intra-Shard Consensus:** Shards execute the **PBFT protocol** (Pre-Prepare --> Prepare --> Commit) to agree on a `MicroBlock`.
+* **3. Finalization:** Shard leaders send committed `MicroBlocks` to the **Final Committee**, which aggregates them into the global chain.
+
+---
+
+## 🛠️ Tech Stack & Dependencies
+
+| Component | Technology | Purpose |
+| --- | --- | --- |
+| **Language** | C++17 | Performance and low-level resource control. |
+| **Networking** | MPI | Simulating distributed message passing between nodes. |
+| **Parallelism** | OpenMP | Parallelizing transaction validation within a node. |
+| **Cryptography** | `secp256k1` | Industry-standard ECDSA signatures (Bitcoin-grade). |
+| **Serialization** | `nlohmann/json` | Modern JSON handling for configurations and state. |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* **MPI Compiler:** OpenMPI or MPICH.
+* **Build System:** CMake (>= 3.16) and Make.
+* **Libraries:** OpenSSL.
+
+### Build Instructions
+
+```bash
+# Clone the repository
+git clone <repo-url>
+cd acphotinakis-parallelizing-blockchain-computations
+
+# Build the project
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+
+```
+
+### Running the Simulation
+
+Execute the simulation using `mpiexec`. The total number of nodes must be at least the sum of shards plus the Final Committee size.
+
+```bash
+# Example: 8 nodes, 2 shards, 1000 transactions
+mpiexec -n 8 ./sbmpi --shards 2 --transactions 1000
+
+```
+
+---
+
+## Performance Measurement
+
+The simulation generates detailed CSV metrics in the `/metrics` directory, focusing on three core KPIs:
+
+* **Throughput (TPS):** Total transactions finalized per second.
+* **Latency:** Average time from submission to final confirmation.
+* **Speedup:** Ratio of serial execution time vs. parallel (sharded) execution.
+
+---
+
+## Project Structure
+
+```text
+.
+├── include/sbmpi/
+│   ├── consensus/    # PBFT protocol and message headers
+│   ├── core/         # Blockchain, Node, and Block logic
+│   ├── network/      # Sharding, MPI wrappers, and committees
+│   └── util/         # Logging, Metrics, and Serialization
+├── src/              # Implementation files (.cpp)
+├── scripts/          # Experiment runners and plotting tools
+├── tests/            # PBFT and Sharding integration tests
+└── secp256k1/        # Vendored crypto library
+
+```
+
+---
+
+## References
+
+- "A Survey of Blockchain Consensus Protocols." (20XX, Author(s) Unknown).
+- "An efficient sharding consensus algorithm for consortium chains." (20XX, Author(s) Unknown).
+- "Analyzing fault aware collective performance in a process fault tolerant MPI." (20XX, Author(s) Unknown).
+- Castro, M., & Liskov, B. (1999). *"Practical Byzantine Fault Tolerance"*. Proceedings of the Third Symposium on Operating Systems Design and Implementation.
+- Luu, L., et al. (2016). *"A Secure Sharding Protocol for Open Blockchains (Elastico)"*. Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security.
+- "On Sharding Permissioned Blockchains." (20XX, Author(s) Unknown).
+- "Reaching Consensus in the Byzantine Empire - A Comprehensive Survey." (20XX, Author(s) Unknown).
+- "Survey of Sharding in Blockchains." (20XX, Author(s) Unknown).
+---
+
+**License:** This project is for academic simulation and research purposes.
