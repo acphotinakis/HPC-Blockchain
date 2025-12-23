@@ -4,6 +4,8 @@
 
 merge_all_accept_incoming_then_set_to_X.sh
 
+logs/
+
 # Local environment files
 .DS_Store
 *.swp
