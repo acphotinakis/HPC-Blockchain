@@ -210,12 +210,17 @@ namespace sbmpi
       int         quorum            = 2 * maxFaultyNodes + 1;
 
       // --- PHASE 1: PREPARE ---
-      prepare(proposedBlockHash);
-      messagesExchanged += numNodes - 1;
+      if (myRank != leaderRank) {
+        prepare(proposedBlockHash);
+        messagesExchanged += numNodes - 1;
+      }
 
-      int prepareCount = 1;  // Start by counting myself
+      int prepareCount = 0;
       std::set<int> prepareVoters;
-      prepareVoters.insert(myRank);
+      if (myRank != leaderRank) {
+          prepareCount++;
+          prepareVoters.insert(myRank);
+      }
 
       while (prepareCount < quorum) {
           MPI_Status status;
