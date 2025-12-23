@@ -127,7 +127,6 @@ The simulation generates detailed CSV metrics in the `/metrics` directory, focus
 * Amiri, M. J., Agrawal, D., & El Abbadi, A. (2019). "On Sharding Permissioned Blockchains." *2019 IEEE International Conference on Blockchain (Blockchain)*, pp. 282-285. [doi:10.1109/Blockchain.2019.00044]
 * Castro, M., & Liskov, B. (1999). "Practical Byzantine Fault Tolerance." *Proceedings of the Third Symposium on Operating Systems Design and Implementation (OSDI)*.
 * Hursey, J., & Graham, R. L. (2012). "Analyzing fault aware collective performance in a process fault tolerant MPI." *Parallel Computing*, 38(1), pp. 15-25. [doi:10.1016/j.parco.2011.10.010]
-* Kumar, M. (2025). "Parallelism and Blockchain" (Blockchain.pdf). CSCI 654 Lecture Slides.
 * Luu, L., et al. (2016). "A Secure Sharding Protocol for Open Blockchains (Elastico)." *Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security*.
 * Wu, X., Jiang, W., Song, M., Jia, Z., & Qin, J. (2023). "An efficient sharding consensus algorithm for consortium chains." *Scientific Reports*, 13(1), p. 20. [doi:10.1038/s41598-022-27228-1]
 * Xu, J., Wang, C., & Jia, X. (2023). "A Survey of Blockchain Consensus Protocols." *ACM Computing Surveys*, 55(13s), pp. 1-35. [doi:10.1145/3579845]

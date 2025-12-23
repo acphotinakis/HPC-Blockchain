@@ -2,6 +2,8 @@
 *.o
 *.out
 
+merge_all_accept_incoming_then_set_to_X.sh
+
 # Local environment files
 .DS_Store
 *.swp
