@@ -8,7 +8,7 @@
   // ---------------------------------------------------------
   // clangd (language server)
   // ---------------------------------------------------------
-  "clangd.path": "/home/stu5/s0/acp7795/LLVM-21.1.7-Linux-X64/bin/clangd",
+  "clangd.path": "YOUR_CLANG_PATH",
   "clangd.arguments": [
     "--compile-commands-dir=build",
     "--background-index",
@@ -22,7 +22,7 @@
   "editor.formatOnPaste": true,
   "editor.formatOnType": true,
   "editor.defaultFormatter": "xaver.clang-format",
-  "clang-format.executable": "/home/stu5/s0/acp7795/LLVM-21.1.7-Linux-X64/bin/clang-format",
+  "clang-format.executable": "YOUR PATH",
   // ---------------------------------------------------------
   // File associations
   // ---------------------------------------------------------
