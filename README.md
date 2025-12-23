@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="assets/3ea64387-1297-4f77-a5d3-e1a9e4e5fe55.svg" alt="SBMPI banner" width="1200" />
+</p>
+
+
 # ⛓️ SBMPI: Parallelizing Blockchain Computations via Sharding
 
 **A high-performance C++/MPI simulation of a sharded blockchain network using PBFT consensus to achieve horizontal scalability.**
