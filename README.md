@@ -78,7 +78,7 @@ The network is composed of independent MPI processes, each assigned a specific r
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd acphotinakis-parallelizing-blockchain-computations
+cd HPC-Blockchain
 
 # Build the project
 mkdir build && cd build
